@@ -1,0 +1,26 @@
+{
+  "name": "mail-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "secrets": "tsx tools/check-secrets.ts",
+    "hooks:install": "bash tools/install-git-hooks.sh",
+    "web": "tsx src/web/server.ts",
+    "electron": "node electron/launch.cjs",
+    "electron:debug": "node electron/launch.cjs --enable-logging"
+  },
+  "dependencies": {
+    "imapflow": "^1.0.181"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "electron": "^45.3.4",
+    "tsx": "^4.23.15",
+    "typescript": "^5.6.3"
+  }
+}

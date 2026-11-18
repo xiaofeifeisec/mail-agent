@@ -1,0 +1,161 @@
+# ============================================================
+#  .gitignore —— 把「本地调试信息」挡在版本库之外
+# ============================================================
+#  原则：能公开的进库，本地私有的绝不进。
+#  判断标准 —— 这个文件如果被别人看到，会不会让你尴尬或损失？
+#    会 → 忽略
+# ============================================================
+
+
+# ---------- ① 密钥与本地配置（最重要，绝不能进库）----------
+# .env 里存着：中转站 API key、QQ 邮箱授权码、账号
+# 一旦提交进 git，删历史很麻烦 —— 密钥等于公开了
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# 通配规则：挡住 .env.* 系列的变体（.env.production 等）
+# 但要放行 .env.example —— 模板不含真实值，必须进库，
+# 否则别人 clone 下来不知道该配哪些变量。
+.env.*
+!.env.example
+
+
+# ---------- ② 本地运行数据（可重新生成，不值钱）----------
+# LLM 缓存 + 记账账本：每次跑都会变，进库只会制造无意义的 diff
+.cache/
+*.cache
+
+# 业务数据：emails.jsonl / processed.json / 快照 …
+# 这里存的是【你的真实邮件内容】—— 绝对不能进库
+data/
+*.jsonl
+!package-lock.json     # 但这个 jsonl 是 npm 的锁文件，必须进库
+
+# 日志与临时文件
+logs/
+*.log
+tmp/
+*.tmp
+*.bak
+*.swp
+
+# 语音/TTTS 测试产生的临时音频（曾误生成到根目录，名为 --help 和 speak-*.m4a）
+# 它们不是项目资产，绝不能进版本库
+*.m4a
+*.wav
+*.mp3
+speak-*
+
+# 旧版界面备份（开发残留，当前 index.html 才是正式版）
+*.bak.html
+
+
+# ---------- ③ 工具产物 ----------
+# 依赖：npm install 会重新装，且体积巨大
+node_modules/
+.npm/
+
+# 构建产物
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Python 缓存（万一以后加脚本）
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# macOS 垃圾文件 —— 每台 Mac 都会自动生成，跟项目无关
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+
+# ---------- ④ 编辑器与 IDE ----------
+# 注意：.vscode/【整体不进库】——
+# 里面的 tasks.json / launch.json 写的是本机 node 绝对路径
+# （${env:HOME}/.local/bin/node），别人拿去用要改路径，属于本地调试信息。
+# 想共享配置的话，单独复制成 .vscode/*.example.json 再白名单。
+.vscode/
+.idea/
+*.swp
+*.swo
+
+
+# ---------- ⑤ 临时验证脚本（我们调试时建的）----------
+tmp-*.ts
+tmp-*.mts
+tmp-*.mjs
+*.probe.ts
+
+
+# ---------- ⑥ Web UI ----------
+# web/index.html 是从 web/index.orig.html 改造来的，两个都要入库
+# （orig 保留是为了能对照改动）。
+# 但截图、临时产物不入库。
+web/*.png
+web/*.jpg
+web/*.log
+# 品牌图标必须进库：index.html 引用 /logo.png 与 /favicon.png，
+# 挡掉的话别人 clone 后界面图标会 404
+!web/logo.png
+!web/favicon.png
+!web/logo-1024.png
+
+
+# ---------- ⑦ 本地语音环境（体积大 + 必须本机编译）----------
+# whisper.cpp 源码/编译产物 + 识别模型(465MB) + 音色模型(60MB) ≈ 600MB
+# 而且编译产物跟 CPU 架构绑定（arm64 的二进制不能在 x86 上跑），
+# 所以绝不能进库。别人 clone 后跑下面这一句就装好：
+#     bash scripts/setup-voice.sh
+# （安装脚本本身在 scripts/ 下，必须进库——那是"怎么装"的唯一来源）
+.voice-local/
+__pycache__/
+
+# ---------- ⑧ 明确要进库的文件（防止被上面的规则误伤）----------
+# 这些是项目定义，不进库别人就没法用
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/
+!src/**
+!tools/
+!tools/**
+!docs/
+!docs/**
+!electron/
+!electron/**
+!scripts/
+!scripts/**
+
+# ⚠️ 白名单的副作用：!src/** 会把 src/.DS_Store 之类也捞回来。
+# 所以这里再排一次 —— 垃圾文件永远不进库。
+**/.DS_Store
+**/.DS_Store?
+**/*.log
+**/*.tmp
+**/*.bak
+# Python 编译缓存：!scripts/** 会把 scripts/__pycache__ 一起捞回来，
+# 那种 .pyc 是机器生成的二进制，进库只会让 diff 变脏。
+**/__pycache__/
+**/*.pyc
+
+# 数字人视频素材：二进制大文件，不进版本库。
+# 目录结构保留（manifest.json 要在），视频本身按需自行放入。
+数字人视频/*.webm
+数字人视频/*.mp4
+数字人视频/*.mov
+数字人视频/*.m4v
+数字人视频/*.ogv
+# 但随附的示例形象要进库：别人 clone 下来得有个能立刻用的数字人，
+# 否则界面上一片空白，以为功能坏了。个人形象视频仍然不入库。
+!数字人视频/示例-机器人.webm
+

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mail Agent · 工具与工作流全流程</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --ink:#1e2430; --muted:#6b7280; --line:#e6e9f0;
+    --blue:#2563eb; --cyan:#0891b2; --violet:#7c3aed; --fuchsia:#c026d3;
+    --green:#059669; --orange:#ea580c; --red:#dc2626;
+    --shadow:0 6px 22px rgba(30,40,80,.08); --shadow-hi:0 12px 32px rgba(30,40,80,.16);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;
+    line-height:1.65;-webkit-font-smoothing:antialiased}
+  .hero{background:linear-gradient(120deg,#4f46e5,#6366f1 45%,#0ea5e9);color:#fff;
+    padding:38px 34px 30px;border-radius:0 0 28px 28px;box-shadow:var(--shadow)}
+  .hero h1{margin:0 0 8px;font-size:27px;font-weight:700;letter-spacing:.3px}
+  .hero p{margin:0;opacity:.92;font-size:14px;max-width:760px}
+  .hero .chips{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap}
+  .hero .chip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);
+    padding:4px 11px;border-radius:999px;font-size:12px}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 22px 120px}
+  .nav{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 26px}
+  .nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);
+    padding:10px 16px;border-radius:12px;font-size:14px;cursor:pointer;transition:.2s;
+    box-shadow:var(--shadow);font-weight:500}
+  .nav button:hover{transform:translateY(-2px)}
+  .nav button.on{color:#fff;border-color:transparent;
+    background:linear-gradient(120deg,#4f46e5,#0ea5e9)}
+  .view{display:none;animation:fade .5s ease both}
+  .view.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .lead{font-size:14px;color:var(--muted);margin:0 0 20px;max-width:900px}
+  .stage{margin:0 0 26px}
+  .stage-h{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:16px;font-weight:700}
+  .stage-h .dot{width:11px;height:11px;border-radius:50%}
+  .stage-h .note{font-size:12px;color:var(--muted);font-weight:400}
+  .flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+  .node{position:relative;flex:1 1 150px;min-width:150px;max-width:230px;background:var(--card);
+    border:1px solid var(--line);border-left-width:5px;border-radius:14px;padding:14px 14px 13px;
+    cursor:pointer;transition:.18s;box-shadow:var(--shadow);animation:up .5s ease both}
+  .node:hover{transform:translateY(-4px);box-shadow:var(--shadow-hi)}
+  .node.sel{outline:2px solid var(--accent,#4f46e5);outline-offset:2px}
+  @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  .arrow{display:flex;align-items:center;justify-content:center;width:34px;color:#aab1c0;
+    font-size:20px;font-weight:700;flex:0 0 34px}
+  .node .ic{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.5px}
+  .node .tt{font-size:15px;font-weight:700;margin:3px 0 4px}
+  .node .sb{font-size:12px;color:var(--muted);line-height:1.5}
+  .node .more{position:absolute;right:10px;top:10px;font-size:11px;color:var(--accent,#4f46e5);opacity:0;transition:.2s}
+  .node:hover .more{opacity:1}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+  .tile{background:var(--card);border:1px solid var(--line);border-left-width:5px;border-radius:14px;
+    padding:14px 15px;cursor:pointer;transition:.18s;box-shadow:var(--shadow);animation:up .5s ease both}
+  .tile:hover{transform:translateY(-4px);box-shadow:var(--shadow-hi)}
+  .tile.sel{outline:2px solid var(--accent,#4f46e5);outline-offset:2px}
+  .tile .tt{font-size:14px;font-weight:700;margin:2px 0 5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .tile .sb{font-size:12px;color:var(--muted)}
+  .tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:middle}
+  .tag.ro{background:#e0f2fe;color:#0369a1}
+  .tag.rw{background:#fee2e2;color:#b91c1c}
+  .inv{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+  .inv .b{flex:1;min-width:280px;background:linear-gradient(120deg,#eef2ff,#f0f9ff);
+    border:1px solid #dbe4ff;border-radius:14px;padding:14px 16px;font-size:13px}
+  .inv .b b{color:#4338ca}
+  .drawer{position:fixed;top:0;right:0;height:100vh;width:min(440px,92vw);background:#fff;
+    box-shadow:-16px 0 50px rgba(20,25,50,.18);transform:translateX(105%);transition:transform .32s cubic-bezier(.2,.8,.2,1);
+    z-index:60;display:flex;flex-direction:column;border-radius:18px 0 0 18px;overflow:hidden}
+  .drawer.on{transform:none}
+  .drawer .dh{padding:22px 22px 16px;color:#fff;background:linear-gradient(120deg,#4f46e5,#0ea5e9)}
+  .drawer .dh .k{font-size:11px;opacity:.85;letter-spacing:1px}
+  .drawer .dh h2{margin:4px 0 0;font-size:20px}
+  .drawer .db{padding:18px 22px;overflow:auto;flex:1}
+  .drawer .sec{margin:0 0 18px}
+  .drawer .lab{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin:0 0 5px}
+  .drawer .val{font-size:13.5px}
+  .drawer pre{background:#f6f8fc;border:1px solid var(--line);border-radius:10px;padding:12px;
+    font-size:12px;line-height:1.6;overflow:auto;white-space:pre-wrap;word-break:break-all;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:0;color:#334155}
+  .drawer .close{position:absolute;top:14px;right:16px;background:rgba(255,255,255,.2);
+    border:0;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:17px;line-height:1}
+  .mask{position:fixed;inset:0;background:rgba(20,25,50,.32);opacity:0;pointer-events:none;
+    transition:opacity .3s;z-index:55}
+  .mask.on{opacity:1;pointer-events:auto}
+  .foot{font-size:12px;color:var(--muted);text-align:center;padding:10px 0 0}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 18px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+  .seqnote{background:#fff;border:1px dashed #cbd5e1;border-radius:12px;padding:12px 16px;font-size:13px;margin:0 0 20px}
+  .seqnote b{color:#4338ca}
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>Mail Agent · 工具与工作流全流程</h1>
+  <p>从一封邮件进入系统，到 AI 加工、工具调用、人工审批，再到最终输出——所有环节的数据流与设计取舍，一图打通。点击任意节点查看它<strong>在哪里、做什么、为什么这么设计</strong>。</p>
+  <div class="chips">
+    <span class="chip">收信 → 分类 → AI 加工 → 输出</span>
+    <span class="chip">ReAct 循环 8 步</span>
+    <span class="chip">工具调用 5 道关卡</span>
+    <span class="chip">两段式审批</span>
+    <span class="chip">数据形态演变</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="nav" id="nav"></div>
+  <div id="views"></div>
+  <div class="foot">基于项目源码生成 · 节点详情含文件行号 · 浅色主题</div>
+</div>
+
+<div class="mask" id="mask"></div>
+<aside class="drawer" id="drawer">
+  <div class="dh" id="dh">
+    <button class="close" id="close" aria-label="关闭">×</button>
+    <div class="k" id="dk">节点详情</div>
+    <h2 id="dt"></h2>
+  </div>
+  <div class="db" id="db"></div>
+</aside>
+
+<script>
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+const D = (where, what, why, code) => ({where, what, why, code});
+
+const VIEWS = [
+{
+  id:'main', label:'① 全景主链路', lead:'一次刷新邮箱的完整数据流：邮件从 IMAP 抓取进来，经 MIME 解析、分类打标、会话缓存，再被晨报/问答/草稿/待办等流水线消费，最后输出到 Web、SMTP 或日历。旁路模块（监控/语音/数字人/Agent）复用同一份缓存。',
+  stages:[
+    {title:'收信与解析', color:'var(--blue)', note:'数据源头：从远端邮箱拿到结构化邮件', nodes:[
+      {ic:'IMAP', t:'抓取邮件', s:'imapflow 连接邮箱，按 limit 拉最近 N 封', c:'var(--blue)',
+        d:D('src/web/server.ts:1420 · src/mailbox/imap.ts',
+          'fetchImap(cfg.imap, {limit}) 从邮箱服务器收信，limit 上限 50。只监听本机、TLS 默认校验证书（可用 MAIL_TLS_REJECT_UNAUTHORIZED=0 放宽）。',
+          '收信是整个系统的燃料入口。放在最前面、缓存起来，是为了让后续的晨报/问答/Agent 共用同一批邮件，避免反复连邮箱（慢、还可能触发风控）。',
+          'const mails = await fetchImap(cfg.imap, { limit });\n// 调试开关：?classify=0 跳过分类')},
+      {ic:'MIME', t:'解析与附件', s:'递归解析 multipart，解码中文文件名，附件字节留内存', c:'var(--cyan)',
+        d:D('src/mailbox/types.ts · isAttachmentPart / decodeFileName / parseMime',
+          '递归拆解 MIME 结构；RFC 2231 编码的中文附件名先还原 latin1 字节再按 charset 解码；附件字节只保留在内存，通过 /api/attachment 按 Range 提供预览。',
+          '邮件不是纯文本，附件名乱码、无 Content-Type 的单部分正文误判成附件，都是踩过的坑。递归解析 + 缺省语义修正后，PDF 用 pdf.js 渲染成 canvas（不再依赖浏览器内置插件）。',
+          'decodeFileName(raw)  // 中文附件名不乱码\nisAttachmentPart(part) // 缺省视为正文而非附件')},
+      {ic:'STORE', t:'会话缓存', s:'MailStore.upsert + SESSION 快照，下游直接复用', c:'var(--cyan)',
+        d:D('src/web/server.ts:1423-1450',
+          'MailStore 按 id 去重（upsert）；把 mails/results/fetchedAt 存进进程内 SESSION。/api/digest 等接口直接读缓存，不重复抓取、不重复分类。',
+          '分类要花钱调模型。缓存是省钱的关键一次抓取、多次消费。注意 mails 是快照：重新拉邮件后要重建会话，否则 Agent 看不到新邮件。',
+          'SESSION.mails = mails;\nSESSION.results = results;\nSESSION.fetchedAt = Date.now();')},
+    ]},
+    {title:'分类与检索', color:'var(--violet)', note:'给邮件贴标签，建立可检索索引', nodes:[
+      {ic:'CLASSIFY', t:'LLM 分类', s:'把邮件判为 urgent / normal / ignore，并发 8 路', c:'var(--violet)',
+        d:D('src/pipelines/classify.ts · classifyAll / neutralizeTags',
+          '正文截断到 1200 字，模型只输出 JSON 分类结果；neutralizeTags 先把邮件里的可疑标签文字中和掉，防提示词注入；失败回退 unknown。',
+          '分类决定后续所有行为：紧急邮件进晨报、触发监控提醒。所以既要防住"邮件内容指挥模型"的注入，也要在模型不稳时能跳过（?classify=0）方便调试界面。',
+          'MAX_BODY_CHARS = 1200\nclassifyAll(lm, mails, timeZone, 8)')},
+      {ic:'LABEL', t:'应用标签', s:'applyLabels 把分类结果写回邮件对象', c:'var(--violet)',
+        d:D('src/web/server.ts:1442 · applyLabels',
+          '把 ClassifyResult 的 category 写进 WebMail.labels，前端据此显示紧急/普通/忽略，数字人统计紧急邮件也读这里。',
+          '集中一处打标，保证"列表显示的分类"和"数字人/监控统计的分类"是同一份数据，不会出现两处口径不一致。',
+          'applyLabels(mails, results);')},
+      {ic:'BM25', t:'检索打分', s:'关键词检索的核心算法，供问答使用', c:'var(--violet)',
+        d:D('src/pipelines/bm25.ts · BM25Index',
+          '经典 BM25 打分（K1=1.5, B=0.75），标题加权 2 倍。answer_question 工具先靠它召回候选邮件，再交给模型组织答案。',
+          '邮件量大时不能全塞给模型（贵且超上下文）。BM25 是零成本、可解释的粗筛：先挑出最相关的几封，再让模型精读，省 token 又降低幻觉。',
+          'DEFAULT_K1 = 1.5; DEFAULT_B = 0.75\nDEFAULT_SUBJECT_BOOST = 2')},
+    ]},
+    {title:'AI 加工流水线', color:'var(--fuchsia)', note:'6 条确定性流水线，步骤由代码写死', nodes:[
+      {ic:'DIGEST', t:'晨报', s:'挑重点邮件 + 链接/日期提取，生成摘要', c:'var(--fuchsia)',
+        d:D('src/pipelines/digest.ts · selectForDigest / parseDigest / renderDigestText',
+          '按分类和时间筛选重点，提取每封的前 3 个链接和日期，模型生成摘要（上限 600 字），渲染成可读文本。',
+          '晨报是"每天看一次"的东西，宁可少而精。筛选逻辑写在代码里而非交给模型，保证稳定可预期。',
+          'MAX_DIGEST_CHARS = 600')},
+      {ic:'QA', t:'多跳问答', s:'BM25 召回 → 模型判断动作 → 格式化命中', c:'var(--fuchsia)',
+        d:D('src/pipelines/qa.ts · answerQuestion / parseQaAction',
+          '把问题转成检索词，BM25 找到候选，模型决定是直接答还是再检索，formatHits 把命中结果整理成上下文喂回模型。',
+          '"多跳"指模型可能需要先查 A 再查 B。把每一步动作结构化（parseQaAction）而不是自由发挥，才能控制成本并防止死循环。',
+          'QA_SYSTEM_PROMPT = "你是邮件检索问答助手..."')},
+      {ic:'REPLY', t:'回复草稿', s:'注入检测 + 事实抽取 → 生成草稿', c:'var(--fuchsia)',
+        d:D('src/pipelines/reply.ts · detectInjection / extractFacts / parseReply',
+          'detectInjection 先判断原邮件是否藏有指令（防注入）；extractFacts 抽出关键事实；模型据此生成回复草稿，只存草稿不自动发送。',
+          '邮件来自外部、不可信。"先检测注入再加工"是安全底线；只出草稿不发送，则把最终决定权留给人。',
+          'detectInjection(subject, body) → 命中则拒绝生成')},
+      {ic:'TODO', t:'待办识别', s:'模型只抽日期表达式，代码确定性换算成具体日期', c:'var(--fuchsia)',
+        d:D('src/pipelines/todo.ts · resolveDateExpr / resolveTimeExpr',
+          '模型只输出 hasTodo/title/dateExpr/evidence 等字段；"明天下午3点"这类表达式由代码按邮件时间为基准换算成具体日期，再写入日历。',
+          '让模型算日期容易算错且不可复现。把"理解语言"交给模型、"精确计算"交给代码，是这类任务的分工原则。',
+          'resolveDateExpr(expr, base)  // base = 邮件时间')},
+    ]},
+    {title:'输出与旁路', color:'var(--green)', note:'结果去往何处 + 常驻模块', nodes:[
+      {ic:'WEB', t:'Web 界面', s:'前端单文件渲染，附件/数字人/语音全在浏览器', c:'var(--green)',
+        d:D('web/index.html · src/web/server.ts',
+          '后端每次请求重新读 index.html，改前端刷新即生效。前端用绝对路径 /api/*，通过 pdf.js 预览附件、EventSource 收 SSE 提醒。',
+          '单文件零构建，改完立刻见效——这是这个项目保持"好调试"的关键决定。绝对路径意味着 Electron 必须 loadURL 到本地服务而非 loadFile。',
+          'GET / → 读 web/index.html 并注入 CSP 头')},
+      {ic:'SMTP', t:'发信', s:'真正发送，受审批与脱敏双重保护', c:'var(--red)',
+        d:D('src/mailbox/smtp.ts · src/web/server.ts:1634 /api/send',
+          '发信工具在 registry 中标为有副作用，confirm 模式下必须人工同意；AUTH 认证行在 transcript 里脱敏；/api/send 不回含凭证的原始对话记录。',
+          '发信是不可逆的外部动作。"审批 + 凭证脱敏 + 不回显"三道保护，来自之前审计修掉的中危漏洞（授权码 base64 曾会被前端还原）。',
+          'write(line, sensitive=true) → <认证凭证已脱敏>')},
+      {ic:'AGENT', t:'Agent 管家', s:'ReAct 循环 + 10 工具 + 两段式审批', c:'var(--green)',
+        d:D('src/agent/loop.ts · session.ts · tools.ts',
+          '用户用自然语言提问，模型自己决定调哪个工具，循环到给出答案。副作用工具走人工审批。详见"ReAct 循环"和"工具与关卡"两个视图。',
+          '和上面确定性流水线的根本区别：下一步由模型决定，而不是代码写死。灵活但更难控制，所以多了五道关卡和预算熔断。',
+          'createAgentSession(deps).ask(question) → runId')},
+      {ic:'SIDE', t:'旁路模块', s:'monitor / voice / 数字人，复用同一缓存', c:'var(--orange)',
+        d:D('src/monitor/monitor.ts · src/voice/* · src/web/avatar-chat.ts',
+          'monitor 单实例轮询新邮件并用 SSE 推紧急提醒；voice 用系统 say 朗读 + VoiceSTT.app 识别；数字人把邮件统计交给模型，用安全提示词防注入。',
+          '这些是"增强层"，即使全关掉主链路照样工作。所有模块共用 SESSION 缓存，避免各自重复抓邮箱。',
+          '/api/events (SSE) · /api/voice/stt · /api/avatar/chat')},
+    ]},
+  ]
+},
+{
+  id:'react', label:'② ReAct 循环 8 步', lead:'Agent 的心脏在 loop.ts。每一轮固定 8 步，顺序不能变——先压缩再看预算、先查预算再发请求、坏回复不该占用工具执行机会。循环直到模型给出最终回答或触发熔断。另有两条"不可破坏的不变量"，违反后症状都是"模型突然变傻"且不报错。',
+  stages:[
+    {title:'单轮 8 步（点击看细节）', color:'var(--violet)', note:'turns < maxTurns 时反复执行', nodes:[
+      {ic:'STEP 1', t:'查插话', s:'非阻塞瞄一眼有没有新输入', c:'var(--violet)',
+        d:D('src/agent/loop.ts:74-85',
+          '调 cfg.user.pendingMessage()，有插话就作为一条 user 消息塞进 transcript。非阻塞——只看这一瞬间。',
+          '阻塞等输入会把整个循环卡死。非阻塞保证 Agent 永远在推进，用户想插话只能"搭便车"进下一轮。Web 端目前返回 null（没有插话通道），比假装支持更安全。',
+          'const interrupt = cfg.user.pendingMessage();')},
+      {ic:'STEP 2', t:'组装消息', s:'当前用户消息每次都放最近位置', c:'var(--violet)',
+        d:D('src/agent/loop.ts:87-92',
+          '每轮都 push 一条当前用户问题。看起来重复，但是刻意的。',
+          '不变量 B：当前用户消息每次都在。模型在长上下文里会"忘掉"前面问什么，把问题重复放在最近位置能显著降低跑偏概率，代价只有几十 token。',
+          'transcript.push({role:"user", content:userInput}); // 每轮都放')},
+      {ic:'STEP 3', t:'超预算压缩', s:'从中间砍旧工具结果，保头尾', c:'var(--violet)',
+        d:D('src/agent/loop.ts:94-98 · compact()',
+          '估算 token 超上下文预算就压缩：保住头部 system prompt 和最近 6 轮，把中间的老工具结果截到 200 字并标注"已压缩"。',
+          '必须在查预算之前：先压缩再看，否则明明能压下来却直接误判超限。直接删工具结果会让模型以为"调了没结果"，所以保留前 200 字。',
+          'if (est > cfg.contextBudget) compact(transcript);')},
+      {ic:'STEP 4', t:'查 token 预算', s:'不够就停，绝不发请求', c:'var(--red)',
+        d:D('src/agent/loop.ts:100-110',
+          '压缩后再估算，若超过 tokenBudget 就返回 status=token_budget 结束，不调用模型。',
+          '必须在调模型之前：先查再发，否则钱已经花了才发现超了。这是烧钱防护的关键一闸。',
+          'if (used > cfg.tokenBudget) return {status:"token_budget", ...}')},
+      {ic:'STEP 5', t:'调模型', s:'temperature=0，maxTokens=1200', c:'var(--violet)',
+        d:D('src/agent/loop.ts:112-125',
+          'lm.complete(transcript, {temperature:0, maxTokens:1200, tag:"agent"})。模型调用失败也被收成结果返回，不让整个运行崩。',
+          'temperature=0 追求确定性（Agent 要可靠不要创意）。失败兜底是因为网络/额度问题不该升级成服务崩溃。',
+          'raw = await cfg.lm.complete(transcript, {temperature:0,...})')},
+      {ic:'STEP 6', t:'解析', s:'protocol.parseResponse', c:'var(--violet)',
+        d:D('src/agent/protocol.ts · parseResponse',
+          '把模型纯文本里的 json 围栏块解析成 ToolCall；截断安全、只认最后一块、围栏计数、永不抛异常。',
+          '模型输出最不可信。四条硬规则保证任意截断都不会拼出"假调用"，且解析函数永不 throw，避免"模型说怪话"升级成"Agent 崩溃"。',
+          'const parsed = parseResponse(raw);')},
+      {ic:'STEP 7', t:'坏回复处理', s:'喂回错误让它改，连续 3 次熔断', c:'var(--red)',
+        d:D('src/agent/loop.ts:130-157 · MAX_MALFORMED=3',
+          '有 error 就把错误作为 user 消息喂回模型重出；连续 3 次解析失败返回 status=malformed 并停止。',
+          '把错误喂回给模型自纠，比直接放弃更省事；但必须熔断——否则模型一直出坏格式，就是在持续烧钱。',
+          'if (parsed.error) { malformed++; if (malformed>=3) return ... }')},
+      {ic:'STEP 8', t:'执行调用', s:'五道关卡，详见下一视图', c:'var(--green)',
+        d:D('src/agent/loop.ts:178-239',
+          '有 toolCall 就依次过：校验 → deny 规则 → 审批 → 执行 → 结果进 transcript；无 toolCall 则模型在直接回答，收工返回。',
+          '这是安全和成本的交汇点。参数残缺在弹窗前就被拒，副作用工具必须问人，所有异常转成结果喂回模型。',
+          'if (!parsed.toolCall) return {status:"done", text:parsed.text, ...}')},
+    ]},
+    {title:'两条不可破坏的不变量', color:'var(--red)', note:'违反后"模型突然变傻"且不报错', nodes:[], inv:true},
+  ]
+},
+{
+  id:'tools', label:'③ 工具与五道关卡', lead:'模型决定调用工具后，调用要连过五道关卡。registry.ts 把"校验"和"执行"拆成两步——这是整个安全链的关键：参数残缺的调用在弹窗之前就被拒，用户永远不会对着残缺调用点"同意"。10 个工具中 8 个只读、2 个有副作用（需审批）。',
+  stages:[
+    {title:'工具调用的五道关卡', color:'var(--blue)', note:'loop.ts:178-239', nodes:[
+      {ic:'关卡 1', t:'校验', s:'registry.validate 只查不执行', c:'var(--blue)',
+        d:D('src/agent/registry.ts:65-109',
+          '查工具名、必填参数、类型、枚举、原型污染字段。返回错误原因而不抛异常。',
+          '参数不对是流程的一部分（要喂回模型改），不是程序异常。用 hasOwnProperty 而非 in 挡 __proto__——因为 in 会把所有合法调用误拒（踩过坑）。',
+          'validate(name,args) → {ok:false, error:"缺少必填参数：k"}')},
+      {ic:'关卡 2', t:'deny 规则', s:'安全正则命中直接拒绝，连问都不问', c:'var(--red)',
+        d:D('src/agent/loop.ts:191-201',
+          'cfg.denyRules 逐条正则匹配 call.name + args，命中就返回 status=denied。规则可用 MAIL_AGENT_DENY 配置（纯文本子串，防 ReDoS）。',
+          '有些操作连审批弹窗都不该出现。作为审批之外的第二道闸，纵深防御。发信工具收件人已被代码锁定为原发件人，攻击面大幅缩小。',
+          'denyRules.find(re => re.test(name + JSON.stringify(args)))')},
+      {ic:'关卡 3', t:'审批', s:'副作用工具 + confirm 模式才问人', c:'var(--red)',
+        d:D('src/agent/session.ts:127-150 · userio.ts',
+          'readOnly=false 且 mode=confirm 时调 user.approve()，把 run 挂起为 awaiting_approval，等前端 decide 唤醒。auto 模式自动放行。',
+          '这里曾有一个高危漏洞：needsApproval(true,...) 参数传反导致副作用工具静默放行。已修为"进入 approve 就必须问人"。人工确认是最后防线。',
+          'if (deps.cfg.mode === "auto") return true;\nrun.pending = req; run.status = "awaiting_approval";')},
+      {ic:'关卡 4', t:'执行', s:'registry.execute 先再校验一次', c:'var(--green)',
+        d:D('src/agent/registry.ts:119-136',
+          'execute 内部再调 validate，通过才调真正工具函数；工具内部异常转成 tool_error 结果，不往上抛。',
+          '防御性二次校验（即使调用方跳过了关卡 1）。异常转成结果喂回模型，让它决定重试/换工具/放弃，而不是整个运行崩溃。',
+          'const content = await spec.fn(args);\nreturn {status:"ok", content};')},
+      {ic:'关卡 5', t:'结果入转录', s:'finishCall 逐字写回 transcript', c:'var(--green)',
+        d:D('src/agent/loop.ts:264-277',
+          'ToolResult 作为一条带 [工具结果] 前缀的 user 消息逐字进 transcript，同时记入审计 calls。',
+          '不变量 A：结果必须逐字出现，否则模型看不到自己拿到什么，会重复调同一工具（死循环烧钱）。这是最容易写出"静默变傻"bug 的地方。',
+          'transcript.push({role:"user",\n  content:`[工具结果：${name}]\\n${result.content}`})')},
+    ]},
+    {title:'10 个工具清单', color:'var(--violet)', note:'绿=只读可直接跑 · 红=有副作用需审批', grid:true, nodes:[
+      {ic:'只读', t:'search_emails', s:'检索邮件（query + k）', c:'var(--violet)', tag:'ro',
+        d:D('src/agent/tools.ts:255', '按关键词检索邮件，返回最多 k 条（默认 5，上限 20）。', '最基础工具，万事第一步。只读、无副作用。', 'search_emails({query:"面试 紧急", k:5})')},
+      {ic:'只读', t:'classify_email', s:'给单封邮件分类', c:'var(--violet)', tag:'ro',
+        d:D('src/agent/tools.ts:280', '对指定 id 的邮件跑分类。', '复用主链路的分类能力。', 'classify_email({id})')},
+      {ic:'只读', t:'build_digest', s:'生成晨报', c:'var(--violet)', tag:'ro',
+        d:D('src/agent/tools.ts:308', '汇总邮件生成摘要，可指定日期。', '把确定性流水线暴露给 Agent 调用。', 'build_digest({date?})')},
+      {ic:'只读', t:'answer_question', s:'多跳问答', c:'var(--violet)', tag:'ro',
+        d:D('src/agent/tools.ts:339', '对邮件库回答问题（question 用完整句子）。', 'Agent 需要查资料时的主力。', 'answer_question({question})')},
+      {ic:'只读', t:'draft_reply', s:'起草回复（不发送）', c:'var(--violet)', tag:'ro',
+        d:D('src/agent/tools.ts:370', '为某封邮件生成回复草稿。', '只出草稿，发送是另一个工具。', 'draft_reply({id})')},
+      {ic:'只读', t:'remember', s:'记住一句话', c:'var(--violet)', tag:'ro',
+        d:D('src/agent/tools.ts:406', '把简短事实写入跨会话记忆。', '让 Agent 有长期记忆，下次会话还能想起。', 'remember({content})')},
+      {ic:'只读', t:'recall', s:'回忆主题', c:'var(--violet)', tag:'ro',
+        d:D('src/agent/tools.ts:425', '按关键词检索记忆。', '与 remember 配对，取回之前记的事。', 'recall({query})')},
+      {ic:'只读', t:'ask_user', s:'反问用户', c:'var(--violet)', tag:'ro',
+        d:D('src/agent/tools.ts:446', '信息不足时主动问用户，把回答作为结果继续。', '让 Agent 能澄清歧义，而不是瞎猜。', 'ask_user({question})')},
+      {ic:'副作用', t:'flag_email', s:'给邮件加标签', c:'var(--red)', tag:'rw',
+        d:D('src/agent/tools.ts:469', '修改邮件标签（readOnly=false）。', '会改变状态，confirm 模式下必须人工审批。', 'flag_email({id, label})')},
+      {ic:'副作用', t:'send_draft_reply', s:'真正发送邮件', c:'var(--red)', tag:'rw',
+        d:D('src/agent/tools.ts:500', '发送回复（id + body + 可选 subject），收件人被代码锁定为原发件人。', '最危险的动作：不可撤销。审批 + 收件人锁定 + 凭证脱敏三重保护。之前的高危漏洞就在这个工具的审批链上。', 'send_draft_reply({id, body, subject?})')},
+    ]},
+  ]
+},
+{
+  id:'data', label:'④ 数据形态演变', lead:'数据在系统里不断变换形态。理解"每一步变成什么、为什么这么变"，就理解了整个架构。下面两条链分别展示：一封邮件从原始字节到前端渲染的演变，以及一次提问从文本到工具调用再回到答案的演变。',
+  stages:[
+    {title:'邮件数据的变形链', color:'var(--cyan)', note:'原始字节 → 前端卡片', nodes:[
+      {ic:'形态 1', t:'IMAP 原始报文', s:'远端邮箱的字节流 + MIME 结构', c:'var(--cyan)',
+        d:D('src/mailbox/imap.ts', '从邮箱服务器拿到的原始 RFC 822 邮件，含头部、multipart、base64 编码的附件。', '这是唯一"真实"的数据源，后面所有形态都是它的衍生。', '原始字节流')},
+      {ic:'形态 2', t:'Email 对象', s:'结构化字段 + 附件字节', c:'var(--cyan)',
+        d:D('src/mailbox/types.ts', 'parseMime 递归解析成 {id, from, subject, body, attachments[], date...}；附件名按 RFC 2231 解码。', '把非结构化报文变成代码能操作的统一结构，后续所有模块只认这个形状。', '{ id, subject, body,\n  attachments:[{filename, bytes}] }')},
+      {ic:'形态 3', t:'带标签的邮件', s:'加上 category / labels', c:'var(--violet)',
+        d:D('src/web/server.ts:1442 · applyLabels', '分类结果写回，mails 带上 labels:["urgent"] 之类。', '在数据层统一打标，让列表、统计、数字人看到一致的分类。', 'labels:["urgent","normal"]')},
+      {ic:'形态 4', t:'WebMail', s:'前端专用的精简视图', c:'var(--green)',
+        d:D('src/web/server.ts:278 · toWebMail', '转成前端要的字段（日期统一 MM-DD、附件元数据等），通过 /api/emails 返回。', '后端结构不必等于前端结构。toWebMail 做适配层，前端改需求不用动邮箱解析。', 'toWebMail(m, classifyResult) → WebMail')},
+      {ic:'形态 5', t:'DOM 卡片', s:'前端渲染 + 附件 canvas 预览', c:'var(--green)',
+        d:D('web/index.html', '前端按 labels 分色渲染邮件卡片；点附件走 /api/attachment，PDF 用 pdf.js 画到 canvas。', '数据到用户眼前的最后一跳。单文件前端零构建，改完刷新即生效。', '三栏布局 · 紧急标红 · PDF canvas')},
+    ]},
+    {title:'一次提问的变形链', color:'var(--violet)', note:'自然语言 → 工具调用 → 自然语言', nodes:[
+      {ic:'形态 1', t:'用户问题', s:'"帮我查紧急邮件"', c:'var(--violet)',
+        d:D('src/web/server.ts:927 · /api/agent', '前端把问题 POST 到 /api/agent，session.ask() 立刻返回 runId（不等待）。', '问题尽可能保持原话，不提前结构化——理解语义是模型的强项。', 'ask(question) → runId')},
+      {ic:'形态 2', t:'transcript', s:'ChatMessage[] 对话上下文', c:'var(--violet)',
+        d:D('src/agent/loop.ts:65', 'system（工具清单+记忆索引）+ 一轮轮 user/assistant 消息组成 transcript。', '这是 Agent 的"工作台"，所有推理和工具结果都堆在这里，模型每轮看它决定下一步。', '[{role:"system",...},{role:"user",...}]')},
+      {ic:'形态 3', t:'模型文本', s:'可能含 json 工具调用块', c:'var(--fuchsia)',
+        d:D('src/agent/loop.ts:112', '模型输出纯文本：要么自然语言回答，要么一个 ```json 工具调用块。', '模型不直接执行动作，只"点菜"。真正的执行权留在程序手里（安全）。', '"好的，我来查：\n```json\n{tool:"search_emails",...}\n```"')},
+      {ic:'形态 4', t:'ToolCall', s:'parseResponse 解析出的结构化调用', c:'var(--blue)',
+        d:D('src/agent/protocol.ts', 'parseResponse 把文本里的 json 块变成 {name, args, reason}。', '从"不可信文本"到"可执行结构"的转换点，四条硬规则保证不会解析出假调用。', '{name:"search_emails",\n args:{query:"紧急",k:5}}')},
+      {ic:'形态 5', t:'ToolResult', s:'执行结果逐字回灌', c:'var(--green)',
+        d:D('src/agent/registry.ts + loop.ts:finishCall', '工具执行产出 ToolResult，finishCall 把它逐字作为 [工具结果] 消息塞回 transcript。', '模型必须看到真实结果才能继续推理。逐字、不摘要——这是不变量 A。', '{status:"ok", content:"..."}')},
+      {ic:'形态 6', t:'最终回答', s:'模型综合所有结果输出文本', c:'var(--green)',
+        d:D('src/agent/loop.ts:159-167', '模型看够了就输出不带工具块的文本，parseResponse 返回 toolCall=null，run 置为 done。', '一个闭环：自然语言进去，中间可以绕很多圈工具调用，最后还是自然语言出来。用户只看到答案。', 'status:"done", text:"您有 3 封紧急邮件..."')},
+    ]},
+    {title:'两段式审批的状态流', color:'var(--red)', note:'HTTP 无状态 → 用 runId + Promise 串起来', nodes:[
+      {ic:'①', t:'提问返回 runId', s:'请求立刻结束，后台开跑', c:'var(--red)',
+        d:D('src/agent/session.ts:111-125', 'ask() 建一个 AgentRun（status=running），生成 runId 立刻返回，runAgent 在后台 void 执行。', '不能让 HTTP 请求一直挂着——浏览器/代理会断。短请求是 Web 可用的前提。', 'ask(q) → "run-xxx"')},
+      {ic:'②', t:'挂起审批', s:'遇副作用 → awaiting_approval', c:'var(--red)',
+        d:D('src/agent/session.ts:127-150', 'approve() 里把 run 状态改成 awaiting_approval，写一个 pending 项（含唯一审批 id），然后 await 一个 Promise 挂住。', 'Promise 挂在进程内存里，等用户决定时再唤醒。每个 run 的唤醒函数单独存（Map），防并发提问时互相覆盖。', 'run.pending = req;\nawait waitFor(runId);')},
+      {ic:'③', t:'轮询看到待办', s:'status 返回 pending 项', c:'var(--orange)',
+        d:D('src/web/server.ts:953 · /api/agent/status', '前端轮询或收 SSE，拿到 run.status=awaiting_approval 和 pending 描述，弹出"同意/拒绝"框。', '前端不需要长连接，普通轮询就能感知状态变化，简单可靠。', 'GET /api/agent/status?runId=...')},
+      {ic:'④', t:'提交决定', s:'POST decide 唤醒 Promise', c:'var(--green)',
+        d:D('src/agent/session.ts:211-218', 'decide() 核对 runId + 审批 id（防点到旧审批），调 wake() 把决定送回挂起的 Promise，run 恢复 running 继续跑。', '审批 id 唯一是关键：用户在旧标签页点的"同意"不能误放行新一轮的审批。这是安全阀。', 'decide(runId, approvalId, true)\n→ wake(true) → 继续执行')},
+    ]},
+  ]
+},
+];
+
+// 全局节点映射（节点详情数据）
+const ALL = {};
+
+// 渲染导航
+const nav = document.getElementById('nav');
+VIEWS.forEach((v,i)=>{
+  const b=document.createElement('button');
+  b.textContent=v.label; b.dataset.id=v.id;
+  if(i===0)b.className='on';
+  b.onclick=()=>{
+    document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+    document.getElementById('v-'+v.id).classList.add('on');
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
+  nav.appendChild(b);
+});
+
+// 渲染视图
+const views=document.getElementById('views');
+let key=0;
+VIEWS.forEach(v=>{
+  const sec=document.createElement('section');
+  sec.className='view'+(v.id==='main'?' on':'');
+  sec.id='v-'+v.id;
+  let html=`<p class="lead">${esc(v.lead)}</p>`;
+  v.stages.forEach(st=>{
+    html+=`<div class="stage"><div class="stage-h"><span class="dot" style="background:${st.color}"></span>${esc(st.title)} <span class="note">${esc(st.note||'')}</span></div>`;
+    if(st.inv){
+      html+=`<div class="inv">
+        <div class="b"><b>不变量 A · 工具结果逐字回灌</b><br>tool_result 必须逐字出现在下一次调用里。否则模型看不到自己刚拿到什么，会重复调同一工具——死循环烧钱。</div>
+        <div class="b"><b>不变量 B · 当前消息每次都在</b><br>当前用户消息每次都放进消息列表。否则多轮之后模型会忘了用户到底在问什么。</div>
+      </div>`;
+    } else {
+      if(st.grid){ html+='<div class="grid2">'; }
+      else { html+='<div class="flow">'; }
+      st.nodes.forEach((n,idx)=>{
+        const tag=n.tag?`<span class="tag ${n.tag}">${n.tag==='ro'?'只读':'副作用'}</span>`:'';
+        const card=`<div class="${st.grid?'tile':'node'}" style="border-left-color:${n.c};--accent:${n.c}" data-k="${key}" tabindex="0">
+          <div class="more">详情 →</div>
+          <div class="ic">${esc(n.ic)}</div>
+          <div class="tt">${esc(n.t)}${tag}</div>
+          <div class="sb">${esc(n.s)}</div>
+        </div>`;
+        if(!st.grid && idx>0) html+='<div class="arrow">→</div>';
+        html+=card;
+        ALL[key++]={node:n};
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+  });
+  sec.innerHTML=html;
+  views.appendChild(sec);
+});
+
+</script>
+<script>
+// 详情抽屉
+const drawer=document.getElementById('drawer'),mask=document.getElementById('mask');
+const dk=document.getElementById('dk'),dt=document.getElementById('dt'),db=document.getElementById('db');
+function openDetail(k){
+  const item=ALL[k]; if(!item)return;
+  const n=item.node,d=n.d;
+  dt.textContent=n.t;
+  dk.textContent=n.ic+' · 节点详情';
+  drawer.querySelector('.dh').style.background=`linear-gradient(120deg,${n.c},#0ea5e9)`;
+  db.innerHTML=`
+    <div class="sec"><div class="lab">代码位置</div><div class="val"><code>${esc(d.where)}</code></div></div>
+    <div class="sec"><div class="lab">作用 · 是什么 / 做什么</div><div class="val">${esc(d.what)}</div></div>
+    <div class="sec"><div class="lab">为什么这么设计</div><div class="val">${esc(d.why)}</div></div>
+    <div class="sec"><div class="lab">关键代码 / 数据</div><pre>${esc(d.code)}</pre></div>`;
+  document.querySelectorAll('[data-k]').forEach(x=>x.classList.remove('sel'));
+  document.querySelector(`[data-k="${k}"]`)?.classList.add('sel');
+  drawer.classList.add('on');mask.classList.add('on');
+}
+function closeDetail(){drawer.classList.remove('on');mask.classList.remove('on');
+  document.querySelectorAll('[data-k]').forEach(x=>x.classList.remove('sel'));}
+document.querySelectorAll('[data-k]').forEach(el=>{
+  el.addEventListener('click',()=>openDetail(el.dataset.k));
+  el.addEventListener('keydown',e=>{if(e.key==='Enter')openDetail(el.dataset.k)});
+});
+document.getElementById('close').onclick=closeDetail;
+mask.onclick=closeDetail;
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDetail()});
+</script>
+</body>
+</html>

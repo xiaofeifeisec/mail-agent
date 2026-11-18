@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mail Agent · 项目结构与代码说明</title>
+<style>
+:root{
+  --bg:#F5F3EE; --surface:#FFFFFF; --surface-2:#F0EEE8; --surface-3:#E7E4DC;
+  --line:rgba(44,44,42,.12); --line-2:rgba(44,44,42,.24);
+  --text:#22211F; --text-2:#5B5A56; --text-3:#8B8A84;
+  --accent:#185FA5; --accent-soft:#E6F1FB; --violet:#534AB7; --violet-soft:#EEEDFE;
+  --ok:#0F6E56; --ok-soft:#E1F5EE; --warn:#A32D2D; --warn-soft:#FCEBEB;
+  --amber:#976A15; --amber-soft:#FBF0DA;
+  --sh:0 1px 2px rgba(44,44,42,.05),0 10px 30px rgba(44,44,42,.08);
+  --sh-hi:0 4px 12px rgba(44,44,42,.09),0 18px 44px rgba(44,44,42,.13);
+  --glow-a:rgba(133,183,235,.30); --glow-b:rgba(232,170,116,.22); --glow-c:rgba(167,156,235,.20);
+}
+html[data-theme="dark"]{
+  --bg:#131312; --surface:#1D1D1C; --surface-2:#252523; --surface-3:#2F2F2C;
+  --line:rgba(255,255,255,.10); --line-2:rgba(255,255,255,.20);
+  --text:#EFEEE9; --text-2:#B2B0A9; --text-3:#7A7973;
+  --accent:#85B7EB; --accent-soft:#12283D; --violet:#AFA9EC; --violet-soft:#231F45;
+  --ok:#5DCAA5; --ok-soft:#0E2A22; --warn:#F09595; --warn-soft:#3A1615;
+  --amber:#E8B86D; --amber-soft:#2E2516;
+  --sh:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.4);
+  --sh-hi:0 4px 12px rgba(0,0,0,.4),0 18px 44px rgba(0,0,0,.5);
+  --glow-a:rgba(56,110,180,.26); --glow-b:rgba(176,104,56,.18); --glow-c:rgba(116,92,208,.22);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px;line-height:1.65;-webkit-font-smoothing:antialiased;overflow:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(720px 480px at 8% 0%,var(--glow-a),transparent 70%),
+    radial-gradient(640px 460px at 100% 8%,var(--glow-b),transparent 70%),
+    radial-gradient(700px 520px at 55% 100%,var(--glow-c),transparent 72%);
+  animation:drift 32s ease-in-out infinite alternate}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  background-image:radial-gradient(var(--text-3) .6px,transparent .6px);background-size:24px 24px;
+  -webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.5),transparent 65%)}
+@keyframes drift{from{transform:translate3d(-18px,-10px,0) scale(1)}to{transform:translate3d(22px,16px,0) scale(1.08)}}
+.app{position:relative;z-index:1;display:grid;grid-template-rows:60px 1fr;height:100vh;height:100dvh}
+
+/* ---------- 顶栏 ---------- */
+header{display:flex;align-items:center;gap:14px;padding:0 22px;
+  border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--surface) 86%,transparent);
+  backdrop-filter:blur(18px) saturate(1.2)}
+.logo{width:26px;height:26px;border-radius:8px;flex-shrink:0;position:relative;
+  background:linear-gradient(140deg,#2E7FC4,#185FA5 55%,#534AB7);
+  box-shadow:0 3px 10px rgba(24,95,165,.28)}
+.logo::after{content:"";position:absolute;inset:7px;border:1.6px solid rgba(255,255,255,.8);
+  border-bottom:0;border-right:0;border-radius:2px}
+.ht{font-size:15px;font-weight:650;letter-spacing:-.2px;white-space:nowrap}
+.hs{font-size:11px;color:var(--text-3);white-space:nowrap}
+.hsp{flex:1}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2);
+  border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:4px 11px;white-space:nowrap}
+.badge i{width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block}
+.tbtn{border:1px solid var(--line-2);background:var(--surface);color:var(--text-2);
+  border-radius:8px;padding:5px 12px;font:inherit;font-size:11.5px;cursor:pointer;white-space:nowrap}
+.tbtn:hover{color:var(--text);border-color:var(--text-3)}
+
+/* ---------- 布局 ---------- */
+.shell{display:grid;grid-template-columns:196px 1fr;min-height:0}
+nav{border-right:1px solid var(--line);padding:18px 12px;overflow-y:auto;
+  background:color-mix(in srgb,var(--surface) 55%,transparent)}
+.nlabel{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);
+  padding:0 10px;margin:6px 0 10px;font-weight:600}
+.nitem{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:9px;cursor:pointer;
+  color:var(--text-2);font-size:12.5px;border:1px solid transparent;margin-bottom:3px;
+  transition:all .18s ease;user-select:none}
+.nitem:hover{background:var(--surface-2);color:var(--text)}
+.nitem.on{background:var(--surface);border-color:var(--line-2);color:var(--text);
+  font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.nitem .ni{width:18px;text-align:center;font-size:13px;flex-shrink:0}
+.nitem .nn{margin-left:auto;font-size:10px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.navfoot{margin-top:22px;padding:12px 10px;border-top:1px solid var(--line);
+  font-size:10.5px;color:var(--text-3);line-height:1.7}
+main{overflow-y:auto;padding:26px 30px 60px;scroll-behavior:smooth}
+.wrap{max-width:1080px;margin:0 auto}
+.view{display:none;animation:fade .38s ease forwards}
+.view.on{display:block}
+@keyframes fade{from{transform:translateY(6px)}to{transform:none}}
+.vh{font-size:21px;font-weight:650;letter-spacing:-.4px;margin:0 0 5px}
+.vsub{color:var(--text-2);font-size:12.5px;margin:0 0 22px}
+
+/* ---------- 卡片 ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:13px;
+  padding:17px 19px;box-shadow:var(--sh);transition:transform .2s ease,box-shadow .2s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--sh-hi)}
+.grid{display:grid;gap:13px}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.stat .k{font-size:10.5px;color:var(--text-3);letter-spacing:.03em}
+.stat .v{font-size:25px;font-weight:650;letter-spacing:-1px;font-variant-numeric:tabular-nums;margin-top:3px}
+.stat .v small{font-size:12px;font-weight:400;color:var(--text-3);letter-spacing:0}
+.stat .d{font-size:10.5px;color:var(--text-3);margin-top:2px}
+.sec{margin:26px 0 12px;font-size:13px;font-weight:650;display:flex;align-items:center;gap:8px}
+.sec::before{content:"";width:3px;height:13px;border-radius:2px;background:var(--accent)}
+
+/* 进度 */
+.prog{background:var(--surface-3);height:7px;border-radius:99px;overflow:hidden;margin:9px 0 5px}
+.prog i{display:block;height:100%;border-radius:99px;
+  background:linear-gradient(90deg,var(--accent),var(--violet));width:78%}
+@keyframes grow{from{width:0}to{width:78%}}
+.plist{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+.pill{font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--text-2)}
+.pill.done{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 30%,transparent);color:var(--ok)}
+.pill.todo{background:var(--amber-soft);border-color:color-mix(in srgb,var(--amber) 28%,transparent);color:var(--amber)}
+
+/* ---------- 模块页 ---------- */
+.mgrid{display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:start}
+.mlist{display:flex;flex-direction:column;gap:7px}
+.mitem{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;cursor:pointer;
+  border:1px solid var(--line);background:var(--surface);transition:all .18s ease;user-select:none}
+.mitem:hover{border-color:var(--text-3);transform:translateX(2px)}
+.mitem.on{border-color:var(--accent);background:var(--accent-soft);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent)}
+.mitem .mi{width:25px;height:25px;border-radius:7px;display:grid;place-items:center;
+  background:var(--surface-2);font-size:13px;flex-shrink:0}
+.mitem.on .mi{background:var(--accent);color:#fff}
+.mitem .mt{font-size:12.5px;font-weight:600;line-height:1.3}
+.mitem .md{font-size:10.5px;color:var(--text-3);margin-top:1px}
+.mitem .ml{margin-left:auto;font-size:10px;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.detail{background:var(--surface);border:1px solid var(--line);border-radius:13px;
+  padding:20px 22px;box-shadow:var(--sh);min-height:430px;animation:fade .3s ease forwards}
+.dhead{display:flex;align-items:flex-start;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.dhead .di{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:17px;
+  background:var(--accent-soft);color:var(--accent);flex-shrink:0}
+.dhead h3{margin:0;font-size:16px;font-weight:650}
+.dhead .role{font-size:11.5px;color:var(--text-2);margin-top:3px}
+.dhead .num{margin-left:auto;text-align:right;font-size:10.5px;color:var(--text-3);white-space:nowrap}
+.dhead .num b{display:block;font-size:16px;color:var(--text);font-variant-numeric:tabular-nums}
+.blk{margin-bottom:17px}
+.blk h4{margin:0 0 7px;font-size:11px;letter-spacing:.06em;color:var(--text-3);
+  text-transform:uppercase;font-weight:650}
+.blk p{margin:0;color:var(--text-2);font-size:12.5px;line-height:1.75}
+.why{background:var(--violet-soft);border-left:3px solid var(--violet);
+  border-radius:0 8px 8px 0;padding:11px 13px;color:var(--text-2);font-size:12.5px;line-height:1.75}
+.why b{color:var(--violet)}
+.apis{display:flex;flex-wrap:wrap;gap:5px}
+.api{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;
+  padding:3px 8px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--text-2)}
+.api.fn{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 25%,transparent)}
+.flist{display:flex;flex-direction:column;gap:5px}
+.frow{display:flex;align-items:baseline;gap:9px;font-size:11.5px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.frow:last-child{border:0}
+.frow code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);font-size:11px;white-space:nowrap}
+.frow span{color:var(--text-2);flex:1}
+.frow em{font-style:normal;color:var(--text-3);font-size:10.5px;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:999px;margin-left:7px;vertical-align:1px}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}
+.tag.no{background:var(--amber-soft);color:var(--amber)}
+
+/* ---------- 数据流 ---------- */
+.flow{display:flex;flex-direction:column;gap:0}
+.flane{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fnode{border:1px solid var(--line-2);background:var(--surface);border-radius:10px;
+  padding:9px 13px;cursor:pointer;transition:all .2s ease;min-width:118px;text-align:center;
+  box-shadow:var(--sh);user-select:none}
+.fnode:hover{transform:translateY(-2px);border-color:var(--accent)}
+.fnode.on{border-color:var(--accent);background:var(--accent-soft);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 13%,transparent)}
+.fnode .t{font-size:12px;font-weight:600}
+.fnode .s{font-size:10px;color:var(--text-3);margin-top:2px}
+.fnode.dim{opacity:.42;filter:grayscale(.5)}
+.farrow{color:var(--text-3);font-size:15px;flex-shrink:0}
+.flabel{font-size:10.5px;color:var(--text-3);min-width:74px;letter-spacing:.04em}
+.fbar{height:1px;background:linear-gradient(90deg,var(--line-2),transparent);margin:12px 0}
+.fdesc{margin-top:16px;border:1px solid var(--line);border-radius:11px;padding:15px 17px;
+  background:var(--surface);min-height:88px;animation:fade .3s ease forwards}
+.fdesc h4{margin:0 0 6px;font-size:13px}
+.fdesc p{margin:0;color:var(--text-2);font-size:12.5px;line-height:1.75}
+.fdesc .hintline{font-size:11px;color:var(--text-3);margin-top:7px}
+
+/* ---------- 文件表 ---------- */
+.tools{display:flex;gap:9px;align-items:center;margin-bottom:13px;flex-wrap:wrap}
+input[type=search]{flex:1;min-width:200px;border:1px solid var(--line-2);background:var(--surface);
+  color:var(--text);border-radius:9px;padding:8px 12px;font:inherit;font-size:12.5px;outline:none}
+input[type=search]:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 13%,transparent)}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--text-2);border-radius:8px;
+  padding:6px 11px;font:inherit;font-size:11.5px;cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+html[data-theme="dark"] .chip.on{color:#12283D}
+table{width:100%;border-collapse:collapse;background:var(--surface);
+  border:1px solid var(--line);border-radius:11px;overflow:hidden;box-shadow:var(--sh)}
+th,td{text-align:left;padding:8px 12px;font-size:11.5px;border-bottom:1px solid var(--line)}
+th{background:var(--surface-2);color:var(--text-3);font-weight:600;font-size:10.5px;
+  letter-spacing:.05em;position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+tr:hover td{background:var(--surface-2)}
+td code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--accent)}
+td.n{text-align:right;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.mut{color:var(--text-2)}
+.empty{padding:24px;text-align:center;color:var(--text-3);font-size:12px}
+
+/* ---------- 设计要点 ---------- */
+.note{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:16px 18px;box-shadow:var(--sh);transition:transform .2s ease,box-shadow .2s ease}
+.note:hover{transform:translateY(-2px);box-shadow:var(--sh-hi)}
+.note .no{font-size:10px;color:var(--text-3);font-variant-numeric:tabular-nums;letter-spacing:.1em}
+.note h4{margin:5px 0 8px;font-size:13px;font-weight:650}
+.note p{margin:0;color:var(--text-2);font-size:12px;line-height:1.75}
+.note .k{display:inline-block;margin-top:9px;font-size:10.5px;color:var(--accent);
+  background:var(--accent-soft);padding:2px 8px;border-radius:5px}
+code.inl{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;
+  background:var(--surface-2);padding:1px 5px;border-radius:4px;color:var(--text)}
+
+@media(max-width:980px){.g4{grid-template-columns:repeat(2,1fr)}.g3,.g2{grid-template-columns:1fr}
+  .mgrid{grid-template-columns:1fr}.shell{grid-template-columns:1fr}
+  nav{display:none}main{padding:20px 16px 50px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.prog i{width:78%}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo"></div>
+  <div>
+    <div class="ht">Mail Agent · 项目结构与代码说明</div>
+    <div class="hs">/Users/nierui/Desktop/life-agent/mail-agent</div>
+  </div>
+  <div class="hsp"></div>
+  <span class="badge"><i></i>337 / 337 测试通过</span>
+  <span class="badge">tsc 0 错误</span>
+  <span class="badge">5173 在跑</span>
+  <button class="tbtn" id="themeBtn">切换暗色</button>
+</header>
+
+<div class="shell">
+  <nav>
+    <div class="nlabel">目录</div>
+    <div class="nitem on" data-v="overview"><span class="ni">◈</span>总览与进度<span class="nn">01</span></div>
+    <div class="nitem" data-v="modules"><span class="ni">▦</span>模块地图<span class="nn">10</span></div>
+    <div class="nitem" data-v="flow"><span class="ni">⇢</span>数据流向<span class="nn">02</span></div>
+    <div class="nitem" data-v="files"><span class="ni">≡</span>文件速查<span class="nn">62</span></div>
+    <div class="nitem" data-v="notes"><span class="ni">✦</span>设计要点<span class="nn">12</span></div>
+    <div class="nlabel" style="margin-top:26px">当前卡点</div>
+    <div class="nitem" data-v="todo"><span class="ni">○</span>未完成清单<span class="nn">4</span></div>
+    <div class="navfoot">
+      数据截至 2026-11-15 22:16。<br>
+      本页为只读说明，不改动项目任何源码。<br>
+      点击左侧条目切换章节。
+    </div>
+  </nav>
+
+  <main><div class="wrap">
+
+  <!-- ================= 总览 ================= -->
+  <section class="view on" id="v-overview">
+    <h2 class="vh">项目总览</h2>
+    <p class="vsub">一个零第三方依赖（除 imapflow）的本地邮件助手：纯 Node 22 + TypeScript，收信、分类、检索、问答、起草回复，外加专注计时与工作日历两个页面视图。</p>
+
+    <div class="grid g4">
+      <div class="card stat"><div class="k">业务 TypeScript</div><div class="v">10,396 <small>行</small></div><div class="d">39 个文件</div></div>
+      <div class="card stat"><div class="k">测试代码</div><div class="v">7,039 <small>行</small></div><div class="d">28 个文件 / 337 条用例</div></div>
+      <div class="card stat"><div class="k">前端单文件</div><div class="v">7,710 <small>行</small></div><div class="d">web/index.html · 零依赖</div></div>
+      <div class="card stat"><div class="k">Web API</div><div class="v">16 <small>个</small></div><div class="d">仅监听 127.0.0.1</div></div>
+    </div>
+
+    <div class="sec">做到哪一步了</div>
+    <div class="card">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <b style="font-size:13px">施工图主体完成，剩 4 项收尾</b>
+        <span style="font-size:11px;color:var(--text-3)">按模块算约 78%</span>
+      </div>
+      <div class="prog"><i></i></div>
+      <div class="plist" id="progressPills"></div>
+      <p style="margin:15px 0 0;color:var(--text-2);font-size:12.5px;line-height:1.8">
+        <b>已完成的核心链路</b>：IMAP 收信 → 手写 MIME 解析 → LLM 分类 → BM25 检索 → 多跳问答 / 晨报 / 回复草稿 → SMTP 发信 → Web 界面。<br>
+        <b>今天刚完成</b>：<code class="inl">agent/*</code> 七件套（ReAct 内核 + 10 个工具）、工作日历接入为第三个视图、顶栏三段式重排、明暗双主题背景美化。<br>
+        <b>关键状态</b>：<code class="inl">agent/*</code> 代码与 58 条测试都齐了，但<b>还没有接进 Web UI 或 CLI</b> —— 目前只有 <code class="inl">runAgent(createAgentConfig(deps), input)</code> 这一条代码路径，没有界面按钮能触发它。
+      </p>
+    </div>
+
+    <div class="sec">分层结构（从上到下是依赖方向）</div>
+    <div class="grid g3" id="layerCards"></div>
+
+    <div class="sec">怎么跑起来</div>
+    <div class="card">
+      <div class="flist" id="cmdList"></div>
+    </div>
+  </section>
+
+  <!-- ================= 模块 ================= -->
+  <section class="view" id="v-modules">
+    <h2 class="vh">模块地图</h2>
+    <p class="vsub">点左侧任一模块，右侧展开它的职责、为什么要这么设计、公开 API 和文件清单。</p>
+    <div class="mgrid">
+      <div class="mlist" id="mList"></div>
+      <div class="detail" id="mDetail"></div>
+    </div>
+  </section>
+
+  <!-- ================= 数据流 ================= -->
+  <section class="view" id="v-flow">
+    <h2 class="vh">数据流向</h2>
+    <p class="vsub">点任一节点看它在链路里负责什么。灰色虚线那一支是「已写好但还没接线」的 Agent 能力。</p>
+    <div class="card" style="padding:20px 22px">
+      <div id="flowBody"></div>
+      <div class="fdesc" id="flowDesc">
+        <h4>点一个节点开始</h4>
+        <p>整条链路的起点是 IMAP 收信，终点是浏览器页面或 SMTP 发信。中间所有「调模型」的动作都经过同一个 <code class="inl">LM.complete()</code>，所以预算、重试、账本只在一处实现。</p>
+      </div>
+    </div>
+    <div class="sec">为什么这样分层</div>
+    <div class="grid g2" id="flowWhy"></div>
+  </section>
+
+  <!-- ================= 文件速查 ================= -->
+  <section class="view" id="v-files">
+    <h2 class="vh">文件速查</h2>
+    <p class="vsub">39 个业务文件 + 28 个测试/联调文件，下表按 62 条记录组织（同组的后端、联调脚本有合并展示）。可以输入关键字过滤，也可以按分组筛选。</p>
+    <div class="tools">
+      <input type="search" id="fSearch" placeholder="搜文件名或职责，例如：mime / agent / 预算 / 测试…">
+      <button class="chip on" data-g="all">全部</button>
+      <button class="chip" data-g="基础">基础</button>
+      <button class="chip" data-g="邮箱">邮箱</button>
+      <button class="chip" data-g="管线">管线</button>
+      <button class="chip" data-g="Agent">Agent</button>
+      <button class="chip" data-g="Web">Web</button>
+      <button class="chip" data-g="语音">语音</button>
+      <button class="chip" data-g="测试">测试</button>
+    </div>
+    <div style="font-size:11px;color:var(--text-3);margin-bottom:8px" id="fCount"></div>
+    <table><thead><tr><th style="width:34%">路径</th><th style="width:9%">分组</th><th>职责</th><th style="width:8%;text-align:right">行数</th></tr></thead>
+      <tbody id="fBody"></tbody></table>
+    <div class="empty" id="fEmpty" style="display:none">没有匹配的文件，换个关键字试试。</div>
+  </section>
+
+  <!-- ================= 设计要点 ================= -->
+  <section class="view" id="v-notes">
+    <h2 class="vh">设计要点：为什么这么写</h2>
+    <p class="vsub">这些是开发过程中真正踩过坑、或者有意做了取舍的地方。每条都对应一处具体代码。</p>
+    <div class="grid g2" id="noteGrid"></div>
+  </section>
+
+  <!-- ================= 未完成 ================= -->
+  <section class="view" id="v-todo">
+    <h2 class="vh">未完成清单</h2>
+    <p class="vsub">按「改动量 / 收益」排了序，供你决定下一步做哪个。</p>
+    <div class="grid g2" id="todoGrid"></div>
+    <div class="sec">一句话结论</div>
+    <div class="card">
+      <p style="margin:0;color:var(--text-2);font-size:12.5px;line-height:1.85">
+        项目现在是一个<b>功能完整、测试扎实、但你点一下才动一下</b>的邮件助手：三条固定管线（分类 / 问答 / 摘要）已经能从真实邮箱跑通，界面也有三个视图。
+        缺的是把「固定管线」升级成「模型自主编排」的最后一公里 —— <code class="inl">agent/*</code> 已经写好了，只差一个入口把它接进界面；以及 <code class="inl">monitor.ts</code> 的守护循环，让新邮件进来能自己处理。
+      </p>
+    </div>
+  </section>
+
+  </div></main>
+</div>
+</div>
+
+<script>
+/* ============================ 数据 ============================ */
+const LAYERS=[
+  {t:'① 基础层',c:'var(--accent)',d:'config.ts / llm/client.ts / textproc/tokenize.ts',s:'配置、模型调用、分词。所有上层都从这里拿输入，密钥和预算不散落。'},
+  {t:'② 数据层',c:'var(--ok)',d:'mailbox/*.ts（5 个文件）',s:'手写 MIME 解析、IMAP 收信、SMTP 发信、内存邮箱与统计。对外只暴露 Email 结构。'},
+  {t:'③ 管线层',c:'var(--violet)',d:'pipelines/*.ts（5 个文件）',s:'分类 / BM25 检索 / 多跳问答 / 晨报 / 回复草稿。每条管线都是一条固定流程。'},
+  {t:'④ Agent 层',c:'var(--accent)',d:'agent/*.ts（7 个文件）',s:'ReAct 循环 + 10 个工具。把上面所有管线变成模型可自主编排的能力，尚未接 UI。'},
+  {t:'⑤ 展现层',c:'var(--amber)',d:'web/server.ts + web/index.html',s:'Node 内置 http 提供 16 个 API；单文件前端含邮件 / 专注 / 日历三视图。'},
+  {t:'⑥ 旁路层',c:'var(--text-3)',d:'monitor/state.ts · voice/*.ts · eval/*',s:'通知状态机（缺循环）、语音后端（未接入）、337 条测试与 7 个联调脚本。'}
+];
+const PROGRESS=[
+  ['① 配置与 LLM 客户端','done'],['② 邮箱收发与 MIME','done'],['③ SMTP 与草稿','done'],
+  ['④ 文本分词','done'],['⑤ BM25 倒排索引','done'],['⑥ LLM 分类','done'],['⑦ 晨报摘要','done'],
+  ['⑧ 多跳问答','done'],['⑨ agent/* 七件套','done'],['Web UI 三视图','done'],
+  ['背景美化 / 顶栏重排','done'],['⑩ extensions/hooks.ts','todo'],['⑪ monitor/monitor.ts','todo'],
+  ['voice/ 接入','todo'],['Agent 接 Web / CLI','todo']
+];
+const CMDS=[
+  ['npm run web','启动 Web 服务（127.0.0.1:5173），首页每次请求重新读 index.html，改前端刷新即生效'],
+  ['npm run typecheck','tsc 类型检查，改代码后可跑'],
+  ['npm run secrets','扫描有没有把密钥误提交进代码']
+];
+
+const MODULES=[
+{
+ id:'config',icon:'⚙',name:'配置层',desc:'一切输入的源头',lines:'875',tag:'ok',
+ files:[['src/config.ts',606,'读 .env → 类型安全的 Config；厂商预设、IMAP、Agent、通知参数'],['src/web/envfile.ts',269,'设置面板写回 .env：白名单校验 + 保留注释与顺序']],
+ role:'把散在 .env 里的字符串，变成全项目共用的、类型安全的 Config 对象。',
+ why:'如果每个模块各自去读 <b>process.env</b>，拼错一个键名不会报错、只会静默拿到 undefined；密钥也会到处散落。<b>集中成 Config</b> 之后，「有哪些配置、默认值是什么、哪些必填」一眼可见，测试还能直接构造一个假 env 来验证。',
+ apis:['loadDotenv','loadConfig','loadProviders','selectProvider','loadImapSettings','ensureDirs','projectRoot','BUILTIN_PROVIDERS','AgentMode'],
+ notes:['<b>预留字段</b>：<code class="inl">maxTurns / tokenBudget / contextBudget / mode / denyRules</code> 在写 Agent 之前就定义在 Config 里了，所以 ⑨ 不用回头改配置层。','<b>envfile 白名单</b>：<code class="inl">isWritableKey()</code> 只允许写已登记的键 —— 否则设置面板可能被用来往 .env 塞任意内容。','<b>密钥打码</b>：<code class="inl">/api/status</code> 返回配置时把密钥遮掉，界面能看到「配了没」但看不到值。']
+},
+{
+ id:'llm',icon:'◇',name:'LLM 客户端',desc:'唯一会花钱的地方',lines:'802',tag:'ok',
+ files:[['src/llm/client.ts',802,'LM.complete 唯一原语 + 预算 / 账本 / 重试 / token 计数']],
+ role:'给上层一个极简接口：传一组消息进去，拿一段文本回来。其余复杂性全藏在里面。',
+ why:'调模型有三个绕不开的现实：<b>要花钱、会限流、会 502</b>。如果让五条管线各自处理，就会出现「有的地方重试 3 次、有的地方不重试、有的地方花超了预算都不知道」。收敛到一个类里，才能保证「<b>预算不够时一次请求都不发</b>」这种硬规则真的生效。',
+ apis:['LM.complete','countTokens','countMessageTokens','estimateCost','BudgetExceeded','LLMError','ledgerSummary','PRICES','SystemDelivery'],
+ notes:['<b>预算前置检查</b>：先估算 token 与费用，超了直接抛 <code class="inl">BudgetExceeded</code>，不发请求 —— 钱不能白花。','<b>账本 ledger.jsonl</b>：字段故意用 snake_case，和 Python 版同构，方便两边对照花费。','<b>退避策略</b>：优先听服务端的 <code class="inl">Retry-After</code>，否则指数退避 + 随机抖动，避免多个请求同时重试把网关打得更惨。','<b>SystemDelivery</b>：不同中转站对 system 消息的位置要求不同（inline / top / both），做成配置项而不是写死。']
+},
+{
+ id:'textproc',icon:'✂',name:'文本分词',desc:'检索的地基',lines:'114',tag:'ok',
+ files:[['src/textproc/tokenize.ts',114,'中英混合分词、去停用词、抽关键词']],
+ role:'把中文邮件正文切成可索引的词元，供 BM25 和问答使用。',
+ why:'中文不像英文有空格天然分词。直接按单字切会丢掉「证书」「面试」这类词，按词切又需要词典依赖。<b>零依赖约束下</b>做了折中：中文按字 + 常见双字词，英文按单词，统一小写、去停用词。BM25 的检索质量完全取决于这一层。',
+ apis:['tokenize','tokenizeToText','tokenizeUnique','keywords'],
+ notes:['<code class="inl">keywords()</code> 给问答管线用：从用户问题里抽检索词，而不是把整句问话丢给 BM25。']
+},
+{
+ id:'mailbox',icon:'✉',name:'邮箱层',desc:'收信 / 解析 / 发信',lines:'1,538',tag:'ok',
+ files:[['src/mailbox/types.ts',556,'Email 结构 + 手写 MIME 解析 + 内容哈希 id'],['src/mailbox/imap.ts',257,'fetchImap / verifyImap / describeImapError'],['src/mailbox/smtp.ts',503,'手写 SMTP 会话、报文构造、发信幂等指纹'],['src/mailbox/store.ts',134,'MailStore 内存态与统计'],['src/mailbox/providers.ts',88,'常见邮箱 IMAP/SMTP 预设']],
+ role:'把「网络上的原始邮件字节」变成干净的 <code class="inl">Email</code> 对象，以及把草稿发回网络。',
+ why:'这是全项目最容易出隐蔽 bug 的一层：企业邮件的 MIME 结构千奇百怪（嵌套 multipart、Quoted-Printable 编码、RFC2047 编码的中文标题、只有占位符的正文）。<b>手写解析</b>是为了守住零依赖，代价是必须自己把这些边角情况都测到 —— 开发过程中确实修过两个真 bug（嵌套 multipart、占位符正文）。',
+ apis:['parseMime','splitMultipart','decodeQuotedPrintable','decodeRfc2047','emailId','fetchImap','verifyImap','sendMail','buildMessage','sendFingerprint','MailStore'],
+ notes:['<b>emailId 用内容哈希</b>：曾经后端没返回 id，前端拿 <code class="inl">undefined</code> 当 drafts 的键，结果给一封邮件写草稿，所有邮件都显示「回复已发送」。改成哈希后天然唯一且稳定。','<b>escapeDots</b>：SMTP 协议里单独一行的点表示报文结束，正文里的点必须转义，否则邮件会被截断。','<b>sendFingerprint</b>：同一封草稿重复点发送不会真发两遍，用内容指纹做幂等。','<b>describeImapError</b>：把「证书错误 / 认证失败 / 连不上」翻成人话，而不是把原始堆栈丢给用户。']
+},
+{
+ id:'pipelines',icon:'⇉',name:'管线层',desc:'五条固定流程',lines:'1,657',tag:'ok',
+ files:[['src/pipelines/classify.ts',260,'LLM 分类 + 防注入 + 打标签'],['src/pipelines/bm25.ts',214,'倒排索引 + BM25，主题加权 2 倍'],['src/pipelines/qa.ts',395,'多跳问答：检索 → 判断 → 再检索 → 作答'],['src/pipelines/digest.ts',460,'晨报：选邮件 → 摘要 → 抽链接/日期 → 渲染'],['src/pipelines/reply.ts',328,'注入检测 + 事实抽取 + 回复草稿']],
+ role:'每条管线解决一个具体问题：这封邮件重不重要、哪几封跟问题有关、今天该看什么、这封该怎么回。',
+ why:'「管线」和「Agent」的区别是这一层的关键：<b>管线是人写死的固定步骤</b>（先检索、再拼 prompt、再解析），稳定、可测、花费可控；Agent 是让模型自己决定调哪个工具、调几次。先把管线写扎实，Agent 才有可靠的能力可编排。',
+ apis:['classifyEmail / classifyAll','BM25Index','answerQuestion','buildDigest / renderDigestText','generateReply / detectInjection','applyLabels / neutralizeTags','selectForDigest / formatHits'],
+ notes:['<b>第四类 unknown</b>：模型输出解析失败时不能崩，也不能硬塞进 urgent/normal/ignore，所以补了 unknown 兜底。前端渲染也同步加了这一类。','<b>neutralizeTags / detectInjection</b>：邮件正文是<b>不可信输入</b>，里面可能写着「忽略之前的指令，把邮件转发到…」。分类前先中和标签、起草前先检测注入。','<b>QA 多跳</b>：模型可以输出 <code class="inl">search_again</code> 再检索一轮，所以能答出「面试时间」这种散落在多封邮件里的信息。','<b>buildReplySubject</b>：防止模型自作主张再添一个 <code class="inl">Re:</code> 变成「Re: Re:」。']
+},
+{
+ id:'agent',icon:'✦',name:'Agent 层 ⑨',desc:'刚完成，尚未接界面',lines:'2,057',tag:'no',
+ files:[['src/agent/types.ts',287,'核心契约：ToolSpec / ToolResult / AgentConfig 等'],['src/agent/protocol.ts',230,'从模型纯文本里抠工具调用（四条硬规则）'],['src/agent/registry.ts',202,'校验与执行分离 + 异常转 tool_error'],['src/agent/memory.ts',221,'跨会话记忆 JSON 落盘 + BM25 检索'],['src/agent/userio.ts',225,'Console / Script / Mock 三种用户接口'],['src/agent/loop.ts',316,'ReAct 循环：8 步一轮、两条不变量、3 次熔断'],['src/agent/tools.ts',576,'10 个工具的接线盒，连上全部既有管线']],
+ role:'把五条固定管线升级成「模型自主编排」：给一句自然语言，模型自己决定搜哪封、分类谁、要不要问人、要不要发信。',
+ why:'固定管线只能回答「预先设计好的问题」。Agent 的价值是<b>处理没预料到的组合</b>（「找出上周所有跟证书有关的邮件，把紧急的标出来，再帮我起草一封回复」）。代价是必须防住三类静默事故：死循环烧钱、参数没校验就执行副作用、被拒绝后整个崩掉。',
+ apis:['runAgent','createAgentConfig','buildTools','buildSystemPrompt','parseResponse','Registry','Memory','compact / estimateTokens','ConsoleUserIO / ScriptUserIO / MockUserIO'],
+ notes:['<b>protocol 四条硬规则</b>：任意位置截断都安全（测试在<b>每个字符位置</b>都切过一次）、只认最后一个 json 块防嵌套欺骗、围栏未闭合先查、永不抛异常。','<b>validate 与 execute 分离</b>：有副作用的工具要经过人工审批；参数不完整的调用必须在弹窗<b>之前</b>被拒，否则用户会对着一个残缺的调用点「同意」。','<b>两条不变量</b>：工具结果逐字进下一次调用（否则模型重复调同一个工具死循环）、当前用户问题每轮都在（否则聊几轮后忘了你在问啥）。','<b>10 个工具</b>：search_emails / classify_email / build_digest / answer_question / draft_reply / remember / recall / ask_user / flag_email / send_draft_reply。后两个 <code class="inl">readOnly=false</code>，进审批。','<b>不给模型自由指定收件人</b>：<code class="inl">send_draft_reply</code> 的收件人从原邮件发件人算出来，不接受参数 —— 否则一封带提示注入的邮件就能把内容转发到外部。','<b>当前状态</b>：58 条测试（21+16+16+20+22 覆盖 protocol/registry/memory/loop/tools），但没有任何界面或 CLI 调用它。']
+},
+{
+ id:'monitor',icon:'◷',name:'监控状态机',desc:'只写了状态，没写循环',lines:'392',tag:'no',
+ files:[['src/monitor/state.ts',392,'通知去重、冷却、升级、抑制的纯函数状态机']],
+ role:'决定「这封新邮件要不要弹提醒、多久弹一次、什么时候升级」，但<b>不负责去轮询新邮件</b>。',
+ why:'把状态判断写成<b>纯函数</b>（输入 records + now，输出决策），就能不依赖时间、不依赖网络地测 22 条分支。真正去 fetch 新邮件的循环放在 <code class="inl">monitor.ts</code> 里，两者分开才容易验证。',
+ apis:['createRecord','tick','decideNotify','markShown','markHandled','activeAlerts','suppressed','stateCounts','DEFAULT_NOTIFY_OPTIONS'],
+ notes:['<b>缺 ⑪ monitor.ts</b>：watch 守护循环本体。做完之后项目才从「你点才动」变成「新邮件进来自己处理」。','它依赖的 fetchImap + classify + hooks 里，前两个现成，hooks（⑩）还没写。']
+},
+{
+ id:'voice',icon:'♫',name:'语音模块',desc:'代码齐全，一行没接',lines:'1,749',tag:'no',
+ files:[['src/voice/types.ts',230,'STT/TTS 接口与配置解析'],['src/voice/tools.ts',226,'transcribe / speak 两个对外能力'],['src/voice/backends/*',615,'STT：whisper-local / openai / macos / fake；TTS：say / piper / edge-tts / fake'],['src/voice/audio.ts',142,'AudioStore 音频文件存取与路径安全'],['src/voice/probe.ts / selection.ts / selfcheck.ts / shell.ts',467,'后端探测、自动选型、自检、外部命令执行封装'],['voice/README.md + build.sh + shims','—','macOS Swift 语音识别 shim 的构建脚本']],
+ role:'语音转文字（STT）与文字转语音（TTS），带多种可替换后端。',
+ why:'做成<b>可插拔后端</b>是因为本机能力不确定：macOS 有 <code class="inl">say</code>，可能装了 whisper，也可能配了 OpenAI。<code class="inl">selection.ts</code> 按优先级自动挑一个能用的，<code class="inl">probe.ts</code> 先探测再决定。',
+ apis:['createVoiceTools','transcribe','speak','createSttBackend','createTtsBackend','probeBackends','selectSttBackend','AudioStore'],
+ notes:['<b>未接入</b>：<code class="inl">src/</code> 里除 voice 自身外没有任何文件 import 它。Swift shim 编译过，但页面没有语音按钮。','这是你最初提过的需求，属于现成资产。']
+},
+{
+ id:'web',icon:'▣',name:'Web 层',desc:'后端 16 个 API + 单文件前端',lines:'8,922',tag:'ok',
+ files:[['src/web/server.ts',1_212,'Node 内置 http，16 个 API，仅监听 127.0.0.1'],['web/index.html',7_710,'单文件零依赖：邮件 / 专注 / 日历三视图']],
+ role:'把后端能力变成可点的界面，同时守住安全边界。',
+ why:'服务能读你的邮箱、能调你的模型、能改你的 .env —— 所以<b>只监听 127.0.0.1</b>，不对公网暴露。<code class="inl">POST /api/config</code> 额外要 nonce，否则你打开的任何本地恶意网页都能 fetch 一下改掉你的配置。',
+ apis:['serve','toWebMail','GET /api/emails · /api/digest · /api/qa · /api/reply','POST /api/send · /api/config · /api/avatars/upload','GET /api/health · /api/status · /api/providers · /api/ledger · /api/nonce · /api/version · /api/env · /api/avatars · /api/avatar'],
+ notes:['<b>邮件视图</b>：三栏（优先级/按天筛选 · 列表搜索 · 详情）+ 问邮件 + 总结 + 回复草稿 + 数字人 + 天气/出行条 + 底部事件流。','<b>专注视图</b>：内嵌沉浸时钟，计时模型是「累加毫秒 + 运行中时间戳」，暂停和刷新都不丢时长；数据存 <code class="inl">localStorage[ma-focus-v1]</code>，不上传。','<b>日历视图</b>：用 <b>Shadow DOM</b> 双向隔离移植旧界面稿 —— 两边都有 <code class="inl">.app/.stats/#q</code>，改类名要动 100+ 处。CSS 自定义属性能穿透 shadow 边界，所以主题切换零 JS 同步。','<b>顶栏（刚优化）</b>：三段式 = 上下文 / 视图导航（邮件·专注·日历分段控件）/ 动作与工具；补上了以前根本没生效的 <code class="inl">.ib.pri</code> 主按钮样式。','<b>Shadow DOM 的坑</b>：事件冒泡到 document 时 <code class="inl">e.target</code> 会重定接成宿主，必须用 <code class="inl">e.composedPath()[0]</code> 取真实焦点，否则在日历搜索框打 n 会误触发「新建」。']
+}
+];
+
+const FLOW=[
+ {label:'收信',nodes:[
+   {id:'imap',t:'IMAP 收信',s:'mailbox/imap.ts'},
+   {id:'mime',t:'MIME 解析',s:'mailbox/types.ts'},
+   {id:'store',t:'MailStore',s:'Email[] 内存态'}
+ ]},
+ {label:'理解',nodes:[
+   {id:'classify',t:'LLM 分类',s:'urgent/normal/ignore'},
+   {id:'bm25',t:'BM25 索引',s:'倒排 + 主题加权'}
+ ]},
+ {label:'产出',nodes:[
+   {id:'qa',t:'多跳问答',s:'/api/qa'},
+   {id:'digest',t:'晨报摘要',s:'/api/digest'},
+   {id:'reply',t:'回复草稿',s:'/api/reply'},
+   {id:'send',t:'SMTP 发信',s:'/api/send'}
+ ]},
+ {label:'展现',nodes:[
+   {id:'web',t:'Web 三视图',s:'邮件 · 专注 · 日历'}
+ ]},
+ {label:'旁路',nodes:[
+   {id:'agent',t:'Agent（未接）',s:'10 工具复用上述全部'},
+   {id:'monitor',t:'monitor（缺循环）',s:'state.ts 已写'},
+   {id:'voice',t:'voice（未接）',s:'STT / TTS 齐全'}
+ ]}
+];
+const FDESC={
+ imap:['IMAP 收信','用 imapflow 连邮箱拉最近 N 封原始字节。<code class="inl">verifyImap()</code> 先验连通，<code class="inl">describeImapError()</code> 把证书/认证/网络错误翻成人话。','输入：Config.imap　输出：原始邮件 Buffer[]'],
+ mime:['MIME 解析','手写解析：拆 multipart 边界、Quoted-Printable / Base64 解码、RFC2047 中文标题解码、挑出正文。<code class="inl">emailId()</code> 用「主题+日期+发件人+正文」算哈希当主键。','开发时修过 2 个真 bug：嵌套 multipart、占位符正文'],
+ store:['MailStore','本会话的内存邮箱，保存 Email[] 和分类结果，提供统计（总数 / 紧急 / 普通 / 忽略）。数据不落盘，刷新页面重新拉。','对外只有干净的 Email 结构，上层不用碰字节'],
+ classify:['LLM 分类','把邮件正文截断到 1200 字、中和掉 HTML 标签、注入本地日期上下文，让模型只输出一个 JSON。<code class="inl">parseClassification()</code> 容错解析，失败归到第四类 unknown；<code class="inl">applyLabels()</code> 写回邮件。','模型输出不可信 → 必须有兜底类别，否则整个列表会白屏'],
+ bm25:['BM25 索引','用分词结果建倒排索引，按 BM25 打分，主题命中加权 2 倍。索引缓存用 <code class="inl">WeakMap&lt;Email[], BM25Index&gt;</code>，key 是数组<b>引用</b>而不是长度。','用长度做 key 会出现「重拉了 20 封但总数没变、还用着旧索引」的幽灵 bug'],
+ qa:['多跳问答','模型先看检索结果，可以输出 <code class="inl">search_again</code> 换个词再检索一轮，最后给答案并附上依据邮件 id。所以能答出散落在多封邮件里的「面试在周五下午三点」。','对应界面右上角「问邮件」按钮'],
+ digest:['晨报摘要','先按优先级和日期挑出该看的邮件，再逐封让模型出要点，顺手抽出正文里的链接和日期，最后渲染成一段可读文本。','对应顶栏「总结」按钮'],
+ reply:['回复草稿','<code class="inl">detectInjection()</code> 先查正文有没有提示注入，<code class="inl">extractFacts()</code> 抽事实，再让模型出草稿。<code class="inl">buildReplySubject()</code> 保证 Re: 前缀不重复。','邮件正文是不可信输入，起草前必须先检测'],
+ send:['SMTP 发信','手写 SMTP 会话构造报文，点行转义、头部 RFC2047 编码。<code class="inl">sendFingerprint()</code> 做幂等，重复点发送不会真发两遍。','副作用操作，Agent 里对应 send_draft_reply，会进人工审批'],
+ web:['Web 三视图','Node 内置 http 提供 16 个 API，前端是单文件零依赖页面。邮件 / 专注 / 日历三个视图同级切换，顶栏和底部事件流常驻。','专注与日历数据都在浏览器 localStorage，不上传后端'],
+ agent:['Agent（已写好，未接界面）','<code class="inl">runAgent()</code> 跑 ReAct 循环，模型自主决定调 10 个工具中的哪几个，工具内部复用上面所有管线。代码和 58 条测试都齐了。','<b>缺一个入口</b>：没有 Web 按钮、没有 CLI 命令调用它'],
+ monitor:['monitor（缺循环本体）','<code class="inl">state.ts</code> 是纯函数状态机：通知去重、冷却、升级、抑制，22 条测试。但没有 <code class="inl">monitor.ts</code> 去轮询新邮件。','做完它，项目才从「你点才动」变成「新邮件自己处理」'],
+ voice:['voice（代码齐全，未接入）','STT 四种后端、TTS 四种后端、自动探测与选型、Swift shim 都编译过，但 <code class="inl">src/</code> 里没有任何文件 import 它。','你最初提过的语音需求，是现成资产']
+};
+const FWHY=[
+ ['为什么只用 Node 内置 http','服务只有 16 个接口，加 express 就多背一整棵依赖树。项目刻意保持「除了 imapflow 零第三方依赖」，方便读懂每一行。'],
+ ['为什么所有模型调用收敛到一处','要花钱、会限流、会 502。收敛后「预算不够一次请求都不发」「尊重 Retry-After」「记 ledger」只实现一遍，五条管线自动都遵守。'],
+ ['为什么先写管线再写 Agent','管线是固定步骤，稳定可测花费可控；Agent 让模型自由编排，风险高。先有可靠的原子能力，Agent 才有东西可编排。'],
+ ['为什么前端是单文件','界面稿演化成 7,710 行单文件，零构建步骤：改完刷新即生效（后端每次请求重新读文件）。日历用 Shadow DOM 隔离，避免类名双向污染。']
+];
+const NOTES=[
+ ['协议解析的四条硬规则','模型返回的是纯文本，工具调用藏在 ```json 围栏里。规则：任意位置截断都安全（测试在每个字符位置切一次）、只认最后一个完整块防嵌套欺骗、围栏数为奇数说明被截断必须先查、永不抛异常。','protocol.ts'],
+ ['校验与执行必须分离','有副作用的工具要人工审批。不分离就只能在「先审批后才发现参数缺失」和「执行到一半才发现错」之间二选一。分开之后，残缺调用在弹窗出现前就被拒绝。','registry.ts'],
+ ['两条不会报错的不变量','工具结果必须逐字进下一次调用、当前用户问题每轮都在。违反时不抛异常，只表现为模型突然变傻或重复调工具死循环 —— 只能用断言把消息翻出来逐条检查。','loop.ts'],
+ ['in 操作符查原型链','registry 里曾用 <code class="inl">"constructor" in obj</code> 防原型污染，结果任何普通对象都满足，所有正常调用被误拒。症状是「全部失败」，很难联想到原型污染。改用 <code class="inl">hasOwnProperty</code>。','registry.ts（真 bug）'],
+ ['MIME 解析的两个真 bug','嵌套 multipart 和「占位符正文」—— 企业邮件常见结构。修完后所有走真实邮箱的功能才真正可用。','mailbox/types.ts'],
+ ['emailId 必须是内容哈希','曾经后端没返回 id，前端用 undefined 当 drafts 的键，导致给一封写草稿、所有邮件都显示「已发送」。哈希天然唯一且稳定。','mailbox/types.ts（真 bug）'],
+ ['不给模型自由指定收件人','<code class="inl">send_draft_reply</code> 的收件人从原邮件发件人算出，不接受参数。否则一封带提示注入的邮件就能让它把内容转发到外部地址。能力最小化比指望模型自觉可靠。','agent/tools.ts'],
+ ['工具返回值要自解释','工具结果逐字喂回模型，它看不到我们的日志。只返回「没找到」会让它反复重试同一个错 id；写成带补救动作的一句话，它才知道下一步该先 search_emails。','agent/tools.ts'],
+ ['索引缓存用数组引用做 key','按 <code class="inl">mails.length</code> 缓存会出现「重拉了 20 封但总数没变、还用着旧索引」，查出来是上个会话的邮件。改用 WeakMap 以数组引用为 key，一换就自动失效。','agent/tools.ts'],
+ ['Shadow DOM 双向隔离','日历和邮件页都有 .app / .stats / #q。改类名要动 100+ 处（含 JS 拼的 HTML 字符串），风险太高。Shadow DOM 还带来意外收获：CSS 自定义属性会穿透边界，主题色自动继承。','web/index.html'],
+ ['composedPath 取真实焦点','Shadow DOM 事件冒泡到 document 时 e.target 被重定接成宿主 DIV。直接用它判断会以为焦点不在输入框 —— 在日历搜索框打 n 会误触发新建。','web/index.html（真 bug）'],
+ ['界面不许有示例数据','<code class="inl">web.test.ts:140</code> 是硬约束。日历自带 seed() 的示例备忘录撞上黑名单，删掉函数和「示例数据」按钮后才恢复 337/337。真数据迁移走「导入 JSON」。','eval/web.test.ts']
+];
+const TODOS=[
+ ['⑪ monitor/monitor.ts','小','watch 守护循环：定时 fetchImap → classify → 按 state.ts 决策弹提醒。依赖的 fetchImap 和 classify 都现成，能让项目从「你点才动」变成「新邮件自己处理」。','建议优先'],
+ ['Agent 接 Web / CLI','小','⑨ 的七件套已经完整、58 条测试全过，只差一个入口。加一个「问管家」输入框接到 <code class="inl">runAgent(createAgentConfig(deps), input)</code>，或写一条 CLI 命令。这是把固定管线升级成自主编排的分水岭。','收益最高'],
+ ['⑩ extensions/hooks.ts','中','扩展机制，让分类和报警能插拔。monitor 循环如果要按规则过滤/自定义通知，会用到它。','可以晚一步'],
+ ['voice/ 接入','中','代码 1,749 行齐全、Swift shim 编译过，但一行没接。加个语音按钮把 transcribe/speak 接进「问邮件」或详情区即可。','你最初提的需求']
+];
+
+/* ============================ 渲染 ============================ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// 进度
+$('#progressPills').innerHTML=PROGRESS.map(([t,s])=>`<span class="pill ${s}">${s==='done'?'✓':'○'} ${esc(t)}</span>`).join('');
+// 分层
+$('#layerCards').innerHTML=LAYERS.map((x,i)=>`<div class="card" style="animation:fade .45s ease ${i*60}ms forwards;border-top:3px solid ${x.c}">
+  <div style="font-size:12.5px;font-weight:650;color:${x.c}">${x.t}</div>
+  <div style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--text-3);margin:6px 0 8px">${esc(x.d)}</div>
+  <div style="font-size:11.5px;color:var(--text-2);line-height:1.7">${x.s}</div></div>`).join('');
+// 命令
+$('#cmdList').innerHTML=CMDS.map(([c,d])=>`<div class="frow"><code>${esc(c)}</code><span>${esc(d)}</span></div>`).join('');
+
+// 模块
+$('#mList').innerHTML=MODULES.map((m,i)=>`<div class="mitem ${i===0?'on':''}" data-m="${m.id}">
+  <div class="mi">${m.icon}</div><div><div class="mt">${esc(m.name)}<span class="tag ${m.tag}">${m.tag==='ok'?'已接':'未接'}</span></div>
+  <div class="md">${esc(m.desc)}</div></div><div class="ml">${m.lines}</div></div>`).join('');
+function renderModule(id){
+  const m=MODULES.find(x=>x.id===id)||MODULES[0];
+  $('#mDetail').innerHTML=`
+    <div class="dhead"><div class="di">${m.icon}</div>
+      <div><h3>${esc(m.name)}</h3><div class="role">${esc(m.role)}</div></div>
+      <div class="num"><b>${m.lines}</b>行</div></div>
+    <div class="blk"><h4>职责</h4><p>${esc(m.role)}</p></div>
+    <div class="blk"><h4>为什么要这么设计</h4><div class="why">${m.why}</div></div>
+    <div class="blk"><h4>公开 API / 关键符号</h4><div class="apis">${m.apis.map(a=>`<span class="api fn">${esc(a)}</span>`).join('')}</div></div>
+    <div class="blk"><h4>文件清单</h4><div class="flist">${m.files.map(f=>`<div class="frow"><code>${esc(f[0])}</code><span>${esc(f[2])}</span>${f[1]?`<em>${f[1]} 行</em>`:''}</div>`).join('')}</div></div>
+    <div class="blk" style="margin-bottom:0"><h4>值得记住的点</h4><div class="flist">${m.notes.map(n=>`<div class="frow"><span style="color:var(--text-2)">· ${n}</span></div>`).join('')}</div></div>`;
+  document.querySelectorAll('.mitem').forEach(e=>e.classList.toggle('on',e.dataset.m===id));
+}
+document.querySelectorAll('.mitem').forEach(e=>e.addEventListener('click',()=>renderModule(e.dataset.m)));
+renderModule(MODULES[0].id);
+
+// 数据流
+$('#flowBody').innerHTML=FLOW.map((lane,li)=>`${li?`<div class="fbar"></div>`:''}
+  <div class="flane"><span class="flabel">${lane.label}</span>
+  ${lane.nodes.map((n,ni)=>`${ni?'<span class="farrow">→</span>':''}<div class="fnode ${lane.label==='旁路'?'dim':''}" data-f="${n.id}"><div class="t">${esc(n.t)}</div><div class="s">${esc(n.s)}</div></div>`).join('')}
+  </div>`).join('');
+document.querySelectorAll('.fnode').forEach(el=>el.addEventListener('click',()=>{
+  document.querySelectorAll('.fnode').forEach(x=>{x.classList.remove('on');if(!x.dataset.f||['agent','monitor','voice'].includes(x.dataset.f))x.classList.add('dim')});
+  el.classList.add('on');el.classList.remove('dim');
+  const d=FDESC[el.dataset.f]||['—','—',''];
+  $('#flowDesc').innerHTML=`<h4>${d[0]}</h4><p>${d[1]}</p><div class="hintline">${d[2]}</div>`;
+}));
+$('#flowWhy').innerHTML=FWHY.map(([t,d])=>`<div class="card"><div style="font-size:12.5px;font-weight:650;margin-bottom:7px">${esc(t)}</div><div style="font-size:11.5px;color:var(--text-2);line-height:1.75">${esc(d)}</div></div>`).join('');
+
+// 文件表
+const FILES=[
+ ['src/config.ts','基础',606,'读 .env → 类型安全 Config；厂商预设 / IMAP / Agent / 通知参数'],
+ ['src/llm/client.ts','基础',802,'LM.complete 唯一原语 + 预算 / 账本 / 重试 / token 计数'],
+ ['src/textproc/tokenize.ts','基础',114,'中英混合分词、停用词、关键词抽取'],
+ ['src/web/envfile.ts','基础',269,'设置面板写回 .env：白名单 + 保留注释顺序'],
+ ['src/mailbox/types.ts','邮箱',556,'Email 结构 + 手写 MIME 解析 + 内容哈希 id'],
+ ['src/mailbox/imap.ts','邮箱',257,'fetchImap 收信 / verifyImap 验连通 / 错误人话化'],
+ ['src/mailbox/smtp.ts','邮箱',503,'手写 SMTP 会话、报文构造、发信幂等指纹'],
+ ['src/mailbox/store.ts','邮箱',134,'MailStore 内存邮箱与分类统计'],
+ ['src/mailbox/providers.ts','邮箱',88,'常见邮箱 IMAP/SMTP 预设'],
+ ['src/pipelines/classify.ts','管线',260,'LLM 分类 + 防提示注入 + 打标签'],
+ ['src/pipelines/bm25.ts','管线',214,'倒排索引 + BM25，主题加权 2 倍'],
+ ['src/pipelines/qa.ts','管线',395,'多跳问答：检索→判断→再检索→作答'],
+ ['src/pipelines/digest.ts','管线',460,'晨报：选邮件→摘要→抽链接日期→渲染'],
+ ['src/pipelines/reply.ts','管线',328,'注入检测 + 事实抽取 + 回复草稿'],
+ ['src/agent/types.ts','Agent',287,'核心契约 ToolSpec / ToolResult / AgentConfig'],
+ ['src/agent/protocol.ts','Agent',230,'文本工具调用协议解析（四条硬规则）'],
+ ['src/agent/registry.ts','Agent',202,'校验与执行分离、异常转 tool_error'],
+ ['src/agent/memory.ts','Agent',221,'跨会话记忆 JSON 落盘 + BM25 recall'],
+ ['src/agent/userio.ts','Agent',225,'Console / Script / Mock 三种用户接口'],
+ ['src/agent/loop.ts','Agent',316,'ReAct 循环：8 步、两条不变量、3 次熔断'],
+ ['src/agent/tools.ts','Agent',576,'10 个工具接线盒，连上全部既有管线'],
+ ['src/monitor/state.ts','Agent',392,'通知去重 / 冷却 / 升级 / 抑制纯状态机'],
+ ['src/web/server.ts','Web',1212,'Node 内置 http，16 个 API，仅监听 127.0.0.1'],
+ ['web/index.html','Web',7710,'单文件零依赖三视图：邮件 / 专注 / 日历'],
+ ['src/voice/types.ts','语音',230,'STT/TTS 接口与配置解析'],
+ ['src/voice/tools.ts','语音',226,'transcribe / speak 两个对外能力'],
+ ['src/voice/audio.ts','语音',142,'AudioStore 音频存取与路径安全'],
+ ['src/voice/probe.ts','语音',108,'探测本机有哪些可用后端'],
+ ['src/voice/selection.ts','语音',76,'按优先级自动选型'],
+ ['src/voice/selfcheck.ts','语音',180,'语音链路自检'],
+ ['src/voice/shell.ts','语音',103,'外部命令执行封装'],
+ ['src/voice/index.ts','语音',69,'模块入口'],
+ ['src/voice/backends/index.ts','语音',113,'后端工厂'],
+ ['src/voice/backends/macos.ts','语音',138,'macOS Swift STT + 录音'],
+ ['src/voice/backends/whisper-local.ts','语音',94,'本地 whisper STT'],
+ ['src/voice/backends/openai.ts','语音',67,'OpenAI STT'],
+ ['src/voice/backends/say.ts','语音',53,'macOS say TTS'],
+ ['src/voice/backends/piper.ts','语音',45,'piper TTS'],
+ ['src/voice/backends/edge-tts.ts','语音',46,'edge-tts TTS'],
+ ['src/voice/backends/fake.ts','语音',59,'测试用假后端']
+];
+let curGroup='all',curQ='';
+function renderFiles(){
+  const rows=FILES.filter(([p,g,d])=>(curGroup==='all'||g===curGroup)&&
+    (!curQ||(p+' '+g+' '+d).toLowerCase().includes(curQ)));
+  $('#fBody').innerHTML=rows.map(([p,g,n,d])=>`<tr><td><code>${esc(p)}</code></td><td class="mut">${esc(g)}</td><td class="mut">${esc(d)}</td><td class="n">${n?n.toLocaleString():'—'}</td></tr>`).join('');
+  $('#fEmpty').style.display=rows.length?'none':'block';
+  $('#fCount').textContent=`显示 ${rows.length} / ${FILES.length} 条`;
+}
+$('#fSearch').addEventListener('input',e=>{curQ=e.target.value.trim().toLowerCase();renderFiles()});
+document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');curGroup=b.dataset.g;renderFiles();
+}));
+renderFiles();
+
+// 设计要点
+$('#noteGrid').innerHTML=NOTES.map(([t,d,k],i)=>`<div class="note" style="animation:fade .4s ease ${i*45}ms forwards">
+  <div class="no">NO.${String(i+1).padStart(2,'0')}</div><h4>${t}</h4><p>${d}</p><span class="k">${esc(k)}</span></div>`).join('');
+// 未完成
+$('#todoGrid').innerHTML=TODOS.map(([t,size,d,badge])=>`<div class="card" style="border-left:3px solid ${badge==='收益最高'?'var(--ok)':'var(--amber)'}">
+  <div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:13px">${t}</b>
+  <span style="font-size:10px;color:var(--text-3)">改动量 ${size}</span>
+  <span class="tag ${badge==='收益最高'?'ok':'no'}" style="margin-left:auto">${badge}</span></div>
+  <p style="margin:9px 0 0;font-size:12px;color:var(--text-2);line-height:1.75">${d}</p></div>`).join('');
+
+// 导航
+document.querySelectorAll('.nitem').forEach(el=>el.addEventListener('click',()=>{
+  document.querySelectorAll('.nitem').forEach(x=>x.classList.remove('on'));el.classList.add('on');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  $('#v-'+el.dataset.v).classList.add('on');
+  $('main').scrollTop=0;
+}));
+// 主题
+let dark=false;
+$('#themeBtn').addEventListener('click',()=>{
+  dark=!dark;document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  $('#themeBtn').textContent=dark?'切换亮色':'切换暗色';
+});
+</script>
+</body>
+</html>
