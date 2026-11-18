@@ -28,7 +28,7 @@
 **要求**：Node ≥ 20、macOS（语音功能依赖系统自带的 `afconvert`；纯文本功能在 Linux 也能跑）
 
 ```bash
-git clone <本仓库地址> mail-agent
+git clone https://github.com/xiaofeifeisec/mail-agent.git
 cd mail-agent
 
 bash scripts/setup.sh        # 一键安装：装依赖、生成 .env、交互式填配置
